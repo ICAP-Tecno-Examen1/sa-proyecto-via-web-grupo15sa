@@ -1,0 +1,13 @@
+# En tecnoweb el proyecto Laravel queda dentro de la carpeta pública del servidor.
+# La API se consume en  .../backend/public/api ; todo lo demás de esta carpeta
+# (código, .env, storage, vendor) NO debe poder descargarse desde el navegador.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^public(/|$) - [L]
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+# Respaldo si mod_rewrite no estuviera activo: al menos se niegan los archivos sensibles.
+<FilesMatch "^(\.env.*|artisan|composer\.(json|lock)|phpunit\.xml)$">
+    Require all denied
+</FilesMatch>

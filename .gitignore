@@ -1,0 +1,14 @@
+# Dependencias y compilados (se regeneran con composer install / npm install / npm run build)
+node_modules/
+vendor/
+dist/
+
+# Configuración local y secretos
+.env
+.env.production
+!.env.example
+!.env.production.example
+
+# Archivos subidos por los usuarios y generados por el sistema
+backend/storage/app/private/
+backend/storage/logs/*.log

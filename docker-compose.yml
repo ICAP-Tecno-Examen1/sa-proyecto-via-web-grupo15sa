@@ -1,0 +1,22 @@
+# Base de datos PostgreSQL SOLO para desarrollo local.
+# En producción se usa el PostgreSQL institucional (db.tecnoweb.org.bo).
+#
+#   docker compose up -d      -> levanta la BD en localhost:5433
+#   docker compose down -v    -> la elimina junto con sus datos
+services:
+  db:
+    image: postgres:15
+    container_name: icap_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: db_icap
+      POSTGRES_USER: icap
+      POSTGRES_PASSWORD: icap_local
+      TZ: America/La_Paz
+    ports:
+      - "5433:5432"
+    volumes:
+      - icap_pgdata:/var/lib/postgresql/data
+
+volumes:
+  icap_pgdata:

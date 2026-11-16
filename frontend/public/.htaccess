@@ -1,0 +1,9 @@
+# Enrutador "browser": cualquier ruta que no sea un archivo real se entrega a index.html
+# para que React Router la resuelva. No afecta a la carpeta backend/ (tiene su propio .htaccess).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^backend/ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . index.html [L]
+</IfModule>

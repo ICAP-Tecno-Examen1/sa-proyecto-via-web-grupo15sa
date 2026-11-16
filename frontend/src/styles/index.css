@@ -1,0 +1,335 @@
+@import 'tailwindcss';
+
+/* ======================================================================
+   IDENTIDAD VISUAL ÚNICA (requisito 5)
+   ----------------------------------------------------------------------
+   Todo el sitio se pinta con las mismas variables. Cambiar de tema solo
+   cambia el valor de esas variables, por eso el estilo es coherente en
+   cada pantalla. Los atributos viven en <html>:
+
+     data-tema      = ninos | jovenes | adultos     (segmento de usuario)
+     data-modo      = dia | noche                   (manual o automático por hora)
+     data-contraste = alto                          (accesibilidad WCAG)
+     --escala-fuente                                (tamaño de letra)
+   ====================================================================== */
+
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-texto: var(--texto);
+  --color-tarjeta: var(--tarjeta);
+  --color-suave: var(--suave);
+  --color-tenue: var(--tenue);
+  --color-borde: var(--borde);
+  --color-primario: var(--primario);
+  --color-sobre-primario: var(--sobre-primario);
+  --color-primario-suave: var(--primario-suave);
+  --color-acento: var(--acento);
+  --color-barra: var(--barra);
+  --color-sobre-barra: var(--sobre-barra);
+  --color-exito: var(--exito);
+  --color-exito-suave: var(--exito-suave);
+  --color-alerta: var(--alerta);
+  --color-alerta-suave: var(--alerta-suave);
+  --color-peligro: var(--peligro);
+  --color-peligro-suave: var(--peligro-suave);
+  --color-informacion: var(--informacion);
+  --color-informacion-suave: var(--informacion-suave);
+  --radius-tema: var(--radio);
+  --font-tema: var(--fuente);
+}
+
+/* ---------------- ADULTOS (predeterminado): sobrio e institucional ---------------- */
+:root {
+  --escala-fuente: 1;
+  --fuente: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --radio: 0.5rem;
+
+  --fondo: #f4f6f9;
+  --texto: #16202e;
+  --tarjeta: #ffffff;
+  --suave: #eef1f6;
+  --tenue: #566275;
+  --borde: #d5dbe5;
+  --primario: #0f4c81;
+  --sobre-primario: #ffffff;
+  --primario-suave: #e2edf8;
+  --acento: #a8791a;
+  --barra: #0c2f52;
+  --sobre-barra: #e8eef6;
+
+  --exito: #14713d;
+  --exito-suave: #dff3e6;
+  --alerta: #8f5a00;
+  --alerta-suave: #fdf0d2;
+  --peligro: #b3261e;
+  --peligro-suave: #fbe3e1;
+  --informacion: #0b5cad;
+  --informacion-suave: #e0edfb;
+
+  /* Paleta categórica de los gráficos (validada para daltonismo, en orden fijo) */
+  --grafico-1: #2a78d6;
+  --grafico-2: #eb6834;
+  --grafico-3: #1baf7a;
+  --grafico-4: #eda100;
+  --grafico-5: #e87ba4;
+  --grafico-6: #008300;
+  --grafico-7: #6250d6;
+  --grafico-8: #e34948;
+  --grafico-rejilla: #e1e0d9;
+  --grafico-eje: #898781;
+}
+
+[data-modo='noche'] {
+  --fondo: #0d1420;
+  --texto: #e7ecf3;
+  --tarjeta: #162131;
+  --suave: #1e2c40;
+  --tenue: #a3b0c2;
+  --borde: #2c3b52;
+  --primario: #6db0ee;
+  --sobre-primario: #08213a;
+  --primario-suave: #1b3552;
+  --acento: #e2b558;
+  --barra: #0a1626;
+  --sobre-barra: #dbe5f1;
+
+  --exito: #5fd08d;
+  --exito-suave: #143524;
+  --alerta: #f2c14b;
+  --alerta-suave: #3b2e0c;
+  --peligro: #ff8a80;
+  --peligro-suave: #43191a;
+  --informacion: #7cb8f5;
+  --informacion-suave: #142f4b;
+
+  --grafico-1: #3987e5;
+  --grafico-2: #d95926;
+  --grafico-3: #199e70;
+  --grafico-4: #c98500;
+  --grafico-5: #d55181;
+  --grafico-6: #0ca30c;
+  --grafico-7: #9085e9;
+  --grafico-8: #e66767;
+  --grafico-rejilla: #2c3b52;
+  --grafico-eje: #8b98ab;
+}
+
+/* ---------------- NIÑOS: colores vivos, formas redondeadas, letra grande ---------------- */
+[data-tema='ninos'] {
+  --fuente: 'Comic Sans MS', 'Chalkboard SE', 'Baloo 2', ui-rounded, 'Trebuchet MS', sans-serif;
+  --radio: 1.25rem;
+  --fondo: #fff7d6;
+  --texto: #3b2408;
+  --tarjeta: #ffffff;
+  --suave: #ffecb0;
+  --tenue: #6e4a17;
+  --borde: #f3c64f;
+  --primario: #c2410c;
+  --sobre-primario: #ffffff;
+  --primario-suave: #ffe2cf;
+  --acento: #b0257a;
+  --barra: #1e7a52;
+  --sobre-barra: #ffffff;
+}
+
+[data-tema='ninos'][data-modo='noche'] {
+  --fondo: #24180a;
+  --texto: #fff3cf;
+  --tarjeta: #382611;
+  --suave: #4a3317;
+  --tenue: #e6c98d;
+  --borde: #6b4a1c;
+  --primario: #ffb347;
+  --sobre-primario: #2b1803;
+  --primario-suave: #5a3a12;
+  --acento: #ff8ecb;
+  --barra: #123f2c;
+  --sobre-barra: #f1ffe9;
+}
+
+/* ---------------- JÓVENES: moderno, contrastes vibrantes ---------------- */
+[data-tema='jovenes'] {
+  --fuente: 'Poppins', 'Montserrat', 'Segoe UI', system-ui, sans-serif;
+  --radio: 0.9rem;
+  --fondo: #f5f2ff;
+  --texto: #1c1438;
+  --tarjeta: #ffffff;
+  --suave: #ebe5ff;
+  --tenue: #55497d;
+  --borde: #d3c8fb;
+  --primario: #6d28d9;
+  --sobre-primario: #ffffff;
+  --primario-suave: #ece3ff;
+  --acento: #c0196f;
+  --barra: #2a1560;
+  --sobre-barra: #efe9ff;
+}
+
+[data-tema='jovenes'][data-modo='noche'] {
+  --fondo: #100b1f;
+  --texto: #f1ecff;
+  --tarjeta: #1b1433;
+  --suave: #271d47;
+  --tenue: #b6a9dd;
+  --borde: #3a2c68;
+  --primario: #b79bff;
+  --sobre-primario: #1a0d3d;
+  --primario-suave: #33246a;
+  --acento: #ff7dc0;
+  --barra: #0b0717;
+  --sobre-barra: #e9e2ff;
+}
+
+/* ---------------- ALTO CONTRASTE (se combina con cualquier tema) ---------------- */
+[data-contraste='alto'] {
+  --fondo: #ffffff;
+  --texto: #000000;
+  --tarjeta: #ffffff;
+  --suave: #ececec;
+  --tenue: #1a1a1a;
+  --borde: #000000;
+  --primario: #00308f;
+  --sobre-primario: #ffffff;
+  --primario-suave: #dfe8ff;
+  --acento: #6b0057;
+  --barra: #000000;
+  --sobre-barra: #ffffff;
+  --exito: #004d1a;
+  --exito-suave: #e3f7e9;
+  --alerta: #5c3a00;
+  --alerta-suave: #fff1cc;
+  --peligro: #8b0000;
+  --peligro-suave: #ffe5e5;
+  --informacion: #00308f;
+  --informacion-suave: #e2ebff;
+}
+
+[data-contraste='alto'][data-modo='noche'] {
+  --fondo: #000000;
+  --texto: #ffffff;
+  --tarjeta: #000000;
+  --suave: #1c1c1c;
+  --tenue: #f0f0f0;
+  --borde: #ffffff;
+  --primario: #ffe600;
+  --sobre-primario: #000000;
+  --primario-suave: #333000;
+  --acento: #7dfcff;
+  --barra: #000000;
+  --sobre-barra: #ffffff;
+  --exito: #7dff9b;
+  --exito-suave: #06260f;
+  --alerta: #ffd95a;
+  --alerta-suave: #2e2400;
+  --peligro: #ff9d9d;
+  --peligro-suave: #330909;
+  --informacion: #9fd0ff;
+  --informacion-suave: #071f38;
+}
+
+[data-contraste='alto'] a,
+[data-contraste='alto'] .enlace {
+  text-decoration: underline;
+}
+
+[data-contraste='alto'] .tarjeta,
+[data-contraste='alto'] input,
+[data-contraste='alto'] select,
+[data-contraste='alto'] textarea,
+[data-contraste='alto'] button {
+  border-width: 2px;
+}
+
+/* ---------------- Base ---------------- */
+html {
+  font-size: calc(16px * var(--escala-fuente));
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--fuente);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Color de borde por defecto; en la capa base para que border-primario, border-exito… lo reemplacen. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--borde);
+  }
+}
+
+:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--primario);
+  color: var(--sobre-primario);
+}
+
+/* Componentes base. Van en la capa "components" para que las utilidades de
+   Tailwind (bg-primario, pl-9, p-4…) puedan ajustarlos en cada pantalla. */
+@layer components {
+  .tarjeta {
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+  }
+
+  .campo-control {
+    width: 100%;
+    background: var(--tarjeta);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: calc(var(--radio) * 0.8);
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    font-size: 0.9375rem;
+  }
+
+  .campo-control:disabled {
+    background: var(--suave);
+    cursor: not-allowed;
+  }
+
+  .campo-control[aria-invalid='true'] {
+    border-color: var(--peligro);
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------------- Impresión de reportes ---------------- */
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .tarjeta {
+    border: none;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+}
