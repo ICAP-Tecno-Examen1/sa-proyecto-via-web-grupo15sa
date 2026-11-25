@@ -30,4 +30,9 @@ class MallaCurricular extends Modelo
     {
         return $this->hasMany(OfertaAcademica::class, 'id_malla');
     }
+
+    public function bloques()
+    {
+        return $this->hasMany(ModuloCarrera::class, 'id_malla')->orderBy('orden');
+    }
 }

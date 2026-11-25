@@ -1,6 +1,6 @@
 import { CircleCheck, QrCode, RefreshCw, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import api, { aFormData, mensajeError } from '../../api/cliente'
+import api, { aFormData } from '../../api/cliente'
 import { useAuth } from '../../context/AuthContext'
 import { useAvisos } from '../../context/AvisosContext'
 import { useConsulta } from '../../hooks/useConsulta'
@@ -32,7 +32,6 @@ export default function ModalPago({ cuota, titular, alCerrar, alTerminar }) {
   const metodos = useConsulta(cuota ? '/metodos-pago/disponibles' : null)
   const [qr, setQr] = useState(null) // { pago, qr }
   const [pagado, setPagado] = useState(false)
-  const [simulando, setSimulando] = useState(false)
   const sondeo = useRef(null)
 
   const f = useFormulario(
@@ -122,20 +121,6 @@ export default function ModalPago({ cuota, titular, alCerrar, alTerminar }) {
     }
   }
 
-  /** Solo en modo SIMULADO: hace lo que haría el banco al aprobar el pago. */
-  const simular = async () => {
-    setSimulando(true)
-
-    try {
-      await api.post(`/pagos/pasarela/simulada/${qr.qr.numero_transaccion}`, { aprobar: true })
-      setPagado(true)
-    } catch (e) {
-      avisar.error(mensajeError(e))
-    } finally {
-      setSimulando(false)
-    }
-  }
-
   if (!cuota) return null
 
   return (
@@ -157,7 +142,6 @@ export default function ModalPago({ cuota, titular, alCerrar, alTerminar }) {
             </div>
           ) : (
             <>
-              {qr.qr.modo === 'SIMULADO' && <Alerta tipo="alerta" className="mb-4 text-left">Pasarela en <strong>modo simulado</strong>: no se mueve dinero real. Escanee el QR con su teléfono o use el botón «Simular pago aprobado».</Alerta>}
               <p className="text-sm text-tenue">Escanee el código con la aplicación de su banco</p>
               <img src={qr.qr.imagen} alt="Código QR para pagar la cuota" className="mx-auto my-3 size-60 rounded-tema border-4 border-primario bg-white p-2" />
               <p className="tabular text-2xl font-extrabold text-primario">{moneda(qr.qr.monto)}</p>
@@ -169,7 +153,6 @@ export default function ModalPago({ cuota, titular, alCerrar, alTerminar }) {
 
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <Boton variante="secundario" icono={RefreshCw} onClick={regenerar}>Generar nuevo QR</Boton>
-                {qr.qr.modo === 'SIMULADO' && <Boton variante="exito" onClick={simular} cargando={simulando}>Simular pago aprobado</Boton>}
               </div>
             </>
           )}

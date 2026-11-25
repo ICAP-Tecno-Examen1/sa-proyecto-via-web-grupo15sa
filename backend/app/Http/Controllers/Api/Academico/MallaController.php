@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Academico;
 
 use App\Http\Controllers\Controller;
 use App\Models\MallaCurricular;
+use App\Models\ModuloCarrera;
 use App\Services\Auditoria;
 use App\Services\MallaService;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,9 @@ use Illuminate\Validation\Rule;
  */
 class MallaController extends Controller
 {
+    /** Programa, materias (con su módulo de carrera, si lo tienen) y los módulos de la carrera. */
+    private const RELACIONES = ['programa:id_programa,codigo,nombre', 'mallaModulos.modulo', 'bloques'];
+
     public function __construct(private readonly MallaService $mallas) {}
 
     public function index(Request $request): JsonResponse
@@ -25,7 +29,7 @@ class MallaController extends Controller
         ]);
 
         return response()->json(
-            MallaCurricular::with(['programa:id_programa,codigo,nombre', 'mallaModulos.modulo'])
+            MallaCurricular::with(self::RELACIONES)
                 ->withCount('ofertas')
                 ->when($f['id_programa'] ?? null, fn ($q, $id) => $q->where('id_programa', $id))
                 ->when($f['estado'] ?? null, fn ($q, $estado) => $q->where('estado', $estado))
@@ -79,15 +83,22 @@ class MallaController extends Controller
             'version' => ['required', 'string', 'max:30'],
             'fecha_vigencia' => ['nullable', 'date'],
             'estado' => ['required', Rule::in([MallaCurricular::ACTIVO, MallaCurricular::INACTIVO])],
-            'modulos' => ['required', 'array', 'min:1'],
+            'modulos' => ['required_without:bloques', 'array', 'min:1'],
             'modulos.*.id_modulo' => ['required', 'integer', 'distinct', Rule::exists('modulo', 'id_modulo')],
             'modulos.*.orden' => ['required', 'integer', 'between:1,100'],
             'modulos.*.obligatorio' => ['required', 'boolean'],
+            // Módulos de la carrera (cada uno con 1 o 2 materias). Si se envían, reemplazan a "modulos".
+            'bloques' => ['nullable', 'array', 'min:1'],
+            'bloques.*.nombre' => ['required', 'string', 'min:3', 'max:200'],
+            'bloques.*.orden' => ['required', 'integer', 'between:1,100'],
+            'bloques.*.modulos' => ['required', 'array', 'min:1', 'max:'.ModuloCarrera::MAXIMO_MATERIAS],
+            'bloques.*.modulos.*.id_modulo' => ['required', 'integer', Rule::exists('modulo', 'id_modulo')],
+            'bloques.*.modulos.*.obligatorio' => ['sometimes', 'boolean'],
         ];
     }
 
     private function detalle(MallaCurricular $malla): MallaCurricular
     {
-        return $malla->refresh()->load(['programa:id_programa,codigo,nombre', 'mallaModulos.modulo'])->loadCount('ofertas');
+        return $malla->refresh()->load(self::RELACIONES)->loadCount('ofertas');
     }
 }

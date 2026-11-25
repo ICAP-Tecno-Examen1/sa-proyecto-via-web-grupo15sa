@@ -12,17 +12,12 @@ const TIPOS = [
   { valor: 'COMPROBANTE', etiqueta: 'Comprobante (transferencia o QR bancario)' },
   { valor: 'PASARELA', etiqueta: 'Pasarela en línea (QR PagoFácil)' },
 ]
-const NOMBRE_TIPO = { EFECTIVO: 'Efectivo', COMPROBANTE: 'Con comprobante', PASARELA: 'Pasarela QR' }
-const MODOS = [
-  { valor: 'SIMULADO', etiqueta: 'Simulado (demostración, sin dinero real)' },
-  { valor: 'REAL', etiqueta: 'Real (PagoFácil, con credenciales)' },
-]
+const NOMBRE_TIPO = { EFECTIVO: 'Efectivo', COMPROBANTE: 'Con comprobante', PASARELA: 'PagoFácil (QR)' }
 const esPasarela = (v) => v.tipo === 'PASARELA'
 
 /**
- * CU4 · Métodos de pago y pasarela digital (requisito 10).
- * Las credenciales de PagoFácil se guardan en la base de datos y nunca se
- * muestran: para cambiarlas se escriben de nuevo.
+ * CU4 · Métodos de pago y credenciales de PagoFácil (requisito 10), como en el proyecto de referencia.
+ * Las credenciales no se muestran después de guardarlas: para cambiarlas se escriben de nuevo.
  */
 export default function MetodosPago() {
   const auth = useAuth()
@@ -41,50 +36,47 @@ export default function MetodosPago() {
   return (
     <CrudSimple
       titulo="Métodos de pago"
-      descripcion="Formas de pago que acepta el ICAP y configuración de la pasarela digital PagoFácil para el cobro con QR."
+      descripcion="Formas de pago del ICAP. Para cobrar con QR, cargue las credenciales de PagoFácil en el método «Pasarela en línea»."
       singular="método de pago"
       recurso="/metodos-pago"
       id="id_metodo_pago"
       buscar={false}
       permisoGestion="metodos_pago.gestionar"
       nota={
-        <Alerta className="mb-4" titulo="Pasarela PagoFácil">
-          En modo <strong>Real</strong> el sistema genera el QR en PagoFácil y confirma el pago cuando llega su notificación (webhook).
-          En modo <strong>Simulado</strong> el QR abre una pasarela de demostración que recorre el mismo flujo sin mover dinero.
+        <Alerta className="mb-4" titulo="PagoFácil">
+          Al escribir el <strong>Token Service</strong> y el <strong>Token Secret</strong> y dejar el método activo, los estudiantes pueden pagar con QR.
+          Solo puede haber un método de PagoFácil activo a la vez.
         </Alerta>
       }
       columnas={[
         { clave: 'nombre', titulo: 'Método', render: (m) => (<><span className="font-semibold">{m.nombre}</span><span className="block max-w-md truncate text-xs text-tenue">{m.descripcion}</span></>) },
         { clave: 'tipo', titulo: 'Tipo', render: (m) => NOMBRE_TIPO[m.tipo] },
-        { clave: 'pasarela', titulo: 'Pasarela', render: (m) => m.pasarela ? (
-          <span className="flex flex-wrap items-center gap-1">
-            <Insignia estado={m.pasarela.modo_efectivo}>Modo {m.pasarela.modo_efectivo === 'REAL' ? 'real' : 'simulado'}</Insignia>
-            <span className="text-xs text-tenue">{m.pasarela.tiene_credenciales ? 'Credenciales cargadas' : 'Sin credenciales'}</span>
-          </span>
-        ) : '—' },
+        { clave: 'electronico', titulo: 'Credenciales', render: (m) => (m.electronico
+          ? <Insignia estado={m.electronico.tiene_credenciales ? 'ACTIVO' : 'PENDIENTE'}>{m.electronico.tiene_credenciales ? 'Cargadas' : 'Faltan'}</Insignia>
+          : '—') },
         { clave: 'pagos_count', titulo: 'Pagos', alinear: 'derecha' },
         { clave: 'activo', titulo: 'Estado', render: (m) => <Insignia estado={m.activo ? 'ACTIVO' : 'INACTIVO'} /> },
       ]}
-      inicial={{ nombre: '', descripcion: '', tipo: 'COMPROBANTE', activo: true, modo: 'SIMULADO', tc_token_service: '', tc_token_secret: '', callback_url: '' }}
+      inicial={{ nombre: '', descripcion: '', tipo: 'COMPROBANTE', activo: true, tc_token_service: '', tc_token_secret: '', callback_url: '' }}
       reglas={{
         nombre: [requerido(), minimo(3), maximo(100)],
         descripcion: [maximo(1000)],
         tipo: [requerido()],
-        modo: [requeridoSi(esPasarela)],
+        tc_token_service: [requeridoSi((v) => esPasarela(v) && !v.id_metodo_pago, 'Escriba el Token Service de PagoFácil.')],
+        tc_token_secret: [requeridoSi((v) => esPasarela(v) && !v.id_metodo_pago, 'Escriba el Token Secret de PagoFácil.')],
         callback_url: [(v) => (v && !/^https?:\/\/.+/i.test(v) ? 'Debe ser una dirección web completa (https://…).' : null)],
       }}
       campos={[
         { nombre: 'nombre', etiqueta: 'Nombre', requerido: true },
         { nombre: 'tipo', etiqueta: 'Tipo de método', tipo: 'select', opciones: TIPOS, vacio: null, requerido: true },
         { nombre: 'descripcion', etiqueta: 'Instrucciones para quien paga', tipo: 'textarea', ancho: 2, ayuda: 'Por ejemplo, los datos de la cuenta bancaria.' },
-        { nombre: 'modo', etiqueta: 'Modo de la pasarela', tipo: 'select', opciones: MODOS, vacio: null, ancho: 2, visible: esPasarela },
         { nombre: 'tc_token_service', etiqueta: 'Token Service (tcTokenService)', tipo: 'password', autoComplete: 'off', visible: esPasarela, ayuda: 'Déjelo vacío para conservar el actual.' },
         { nombre: 'tc_token_secret', etiqueta: 'Token Secret (tcTokenSecret)', tipo: 'password', autoComplete: 'off', visible: esPasarela, ayuda: 'Déjelo vacío para conservar el actual.' },
-        { nombre: 'callback_url', etiqueta: 'URL de notificación (callback)', ancho: 2, visible: esPasarela, ayuda: 'Dirección pública de …/api/pagos/pasarela/callback. Vacío = la configurada en el servidor.' },
+        { nombre: 'callback_url', etiqueta: 'URL de notificación (callback)', ancho: 2, visible: esPasarela, ayuda: 'Dirección pública de …/api/pagos/pagofacil/callback. Vacío = la configurada en el servidor.' },
         { nombre: 'activo', etiqueta: 'Método habilitado', tipo: 'checkbox', ancho: 2 },
       ]}
-      aFormulario={(m) => ({ nombre: m.nombre, descripcion: m.descripcion ?? '', tipo: m.tipo, activo: m.activo, modo: m.pasarela?.modo ?? 'SIMULADO', tc_token_service: '', tc_token_secret: '', callback_url: m.pasarela?.callback_url ?? '' })}
-      aEnvio={(v) => ({ ...v, callback_url: v.callback_url || null, modo: v.tipo === 'PASARELA' ? v.modo : null })}
+      aFormulario={(m) => ({ nombre: m.nombre, descripcion: m.descripcion ?? '', tipo: m.tipo, activo: m.activo, tc_token_service: '', tc_token_secret: '', callback_url: m.electronico?.callback_url ?? '' })}
+      aEnvio={(v) => ({ ...v, callback_url: v.callback_url || null })}
       accionesFila={(m, recargar) => auth.puede('metodos_pago.gestionar') && (
         <Boton tamano="sm" variante="fantasma" icono={m.activo ? Ban : Check} className={m.activo ? 'text-peligro' : 'text-exito'} onClick={() => alternar(m, recargar)}>
           {m.activo ? 'Desactivar' : 'Activar'}

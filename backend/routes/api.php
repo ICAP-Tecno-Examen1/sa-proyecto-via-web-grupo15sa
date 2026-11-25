@@ -17,7 +17,7 @@ use App\Http\Controllers\Api\Finanzas\ArancelController;
 use App\Http\Controllers\Api\Finanzas\BecaController;
 use App\Http\Controllers\Api\Finanzas\MetodoPagoController;
 use App\Http\Controllers\Api\Finanzas\PagoController;
-use App\Http\Controllers\Api\Finanzas\PasarelaController;
+use App\Http\Controllers\Api\Finanzas\PagoFacilController;
 use App\Http\Controllers\Api\Inscripcion\ExpedienteController;
 use App\Http\Controllers\Api\Inscripcion\MatriculaController;
 use App\Http\Controllers\Api\Inscripcion\PreinscripcionController;
@@ -60,12 +60,8 @@ Route::prefix('publico')->group(function () {
 Route::get('busqueda', BusquedaController::class)->middleware('throttle:90,1,busqueda');
 Route::post('visitas', [VisitaController::class, 'registrar'])->middleware('throttle:180,1,visitas');
 
-// Pasarela de pagos: webhook de PagoFácil y banco simulado
-Route::prefix('pagos/pasarela')->group(function () {
-    Route::post('callback', [PasarelaController::class, 'callback'])->middleware('throttle:120,1,pasarela');
-    Route::get('simulada/{numero}', [PasarelaController::class, 'simulada']);
-    Route::post('simulada/{numero}', [PasarelaController::class, 'resolverSimulada'])->middleware('throttle:30,1,simulada');
-});
+// Webhook de PagoFácil (sin sesión): PagoFácil avisa aquí cuando se confirma un pago QR
+Route::post('pagos/pagofacil/callback', [PagoFacilController::class, 'callback'])->middleware('throttle:120,1,pagofacil');
 
 // ======================================================================
 // RUTAS PROTEGIDAS (token Sanctum + usuario activo)

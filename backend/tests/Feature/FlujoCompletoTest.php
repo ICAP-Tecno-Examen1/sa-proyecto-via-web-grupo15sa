@@ -6,6 +6,8 @@ use App\Models\Usuario;
 use Database\Seeders\UsuarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use App\Models\MetodoPagoElectronico;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -170,13 +172,18 @@ class FlujoCompletoTest extends TestCase
         $this->assertSame('PAGADA', $detalle['cuenta']['cuotas'][0]['estado']);
         $this->assertCount(2, $detalle['progreso']['modulos']);
 
-        // --- Pasarela QR (modo simulado) para la segunda cuota: mismo camino que el webhook de PagoFácil
+        // --- PagoFácil para la segunda cuota: API simulada con Http::fake (mismo camino que en producción)
+        MetodoPagoElectronico::query()->update(['tc_token_service' => 'svc-prueba', 'tc_token_secret' => 'sec-prueba', 'activo' => true]);
+        Http::fake([
+            '*/login' => Http::response(['accessToken' => 'token-prueba']),
+            '*/generate-qr' => Http::response(['values' => ['transactionId' => 555001, 'qrImage' => 'iVBORw0KGgo=', 'expirationDate' => '2026-12-31']]),
+            '*/query-transaction' => Http::response(['values' => ['paymentStatus' => 1]]),
+        ]);
         $qr = $this->ok($this->como('camila')->postJson('/api/pagos/qr', ['id_mensualidad' => $cuotas[1]['id_mensualidad'], 'pagador' => $pagador]), 201);
-        $this->assertSame('SIMULADO', $qr['qr']['modo']);
         $this->assertStringStartsWith('data:image/png;base64,', $qr['qr']['imagen']);
         $this->app['auth']->forgetGuards();
-        $this->withHeaders(['Authorization' => ''])->postJson('/api/pagos/pasarela/callback?token=incorrecto', ['PedidoID' => $qr['qr']['numero_transaccion'], 'Estado' => 2])->assertStatus(403);
-        $this->ok($this->postJson('/api/pagos/pasarela/callback?token='.config('icap.pagofacil.webhook_secret'), ['PedidoID' => $qr['qr']['numero_transaccion'], 'Estado' => 2]));
+        $this->withHeaders(['Authorization' => ''])->postJson('/api/pagos/pagofacil/callback?token=incorrecto', ['PedidoID' => $qr['qr']['numero_transaccion'], 'Estado' => 2])->assertStatus(403);
+        $this->ok($this->postJson('/api/pagos/pagofacil/callback?token='.config('icap.pagofacil.webhook_secret'), ['PedidoID' => $qr['qr']['numero_transaccion'], 'Estado' => 2]));
         $this->assertSame('CONFIRMADO', $this->ok($this->como('camila')->getJson("/api/pagos/{$qr['pago']['id_pago']}/estado"))['estado']);
 
         // Tercera cuota en efectivo, registrada por la Secretaria

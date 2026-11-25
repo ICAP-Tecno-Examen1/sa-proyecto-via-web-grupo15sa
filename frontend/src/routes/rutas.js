@@ -8,6 +8,7 @@ import { lazy } from 'react'
  *   permiso  permiso exigido; "a|b" significa que basta uno. Sin permiso = cualquier sesión
  *   publica  no requiere iniciar sesión
  *   invitado solo para quien NO tiene sesión (ingresar, registro)
+ *   pantallaCompleta  la página ocupa todo el ancho y maneja sus propios márgenes (portada)
  *
  * El menú NO sale de aquí: lo entrega la API desde la tabla menu_item. Este
  * mapa solo impide abrir a mano una página para la que el rol no tiene permiso
@@ -17,12 +18,11 @@ const p = (carga) => lazy(carga)
 
 export const RUTAS = [
   // --- Públicas
-  { ruta: '/', titulo: 'Inicio', publica: true, pagina: p(() => import('../pages/publico/Inicio')) },
+  { ruta: '/', titulo: 'Inicio', publica: true, pantallaCompleta: true, pagina: p(() => import('../pages/publico/Inicio')) },
   { ruta: '/catalogo', titulo: 'Catálogo de programas', publica: true, pagina: p(() => import('../pages/publico/Catalogo')) },
   { ruta: '/catalogo/:id', titulo: 'Detalle del programa', publica: true, pagina: p(() => import('../pages/publico/DetalleOferta')) },
   { ruta: '/verificar', titulo: 'Verificar certificado', publica: true, pagina: p(() => import('../pages/publico/VerificarCertificado')) },
   { ruta: '/verificar/:codigo', titulo: 'Verificar certificado', publica: true, pagina: p(() => import('../pages/publico/VerificarCertificado')) },
-  { ruta: '/pasarela-simulada/:numero', titulo: 'Pasarela de pago simulada', publica: true, pagina: p(() => import('../pages/publico/PasarelaSimulada')) },
   { ruta: '/ingresar', titulo: 'Iniciar sesión', publica: true, invitado: true, pagina: p(() => import('../pages/publico/Ingresar')) },
   { ruta: '/registro', titulo: 'Registro de estudiantes', publica: true, invitado: true, pagina: p(() => import('../pages/publico/Registro')) },
 

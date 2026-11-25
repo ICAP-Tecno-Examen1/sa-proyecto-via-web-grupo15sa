@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 /* ======================================================================
-   IDENTIDAD VISUAL ÚNICA (requisito 5)
+   IDENTIDAD VISUAL ÚNICA (requisito 5) · Colores del logo ICAP
    ----------------------------------------------------------------------
    Todo el sitio se pinta con las mismas variables. Cambiar de tema solo
    cambia el valor de esas variables, por eso el estilo es coherente en
@@ -11,6 +11,19 @@
      data-modo      = dia | noche                   (manual o automático por hora)
      data-contraste = alto                          (accesibilidad WCAG)
      --escala-fuente                                (tamaño de letra)
+
+   CÓMO CAMBIAR EL DISEÑO (sin tocar componentes):
+     1. Colores de la marca   → bloque :root y [data-modo='noche'].
+          --primario  azul ICAP (botones, enlaces, títulos destacados)
+          --acento    rojo ICAP (llamadas a la acción, resaltados)
+          --barra     azul profundo (menú lateral y franjas oscuras)
+     2. Redondeo              → --radio (más grande = más redondeado).
+     3. Tipografía            → --fuente (Poppins se carga en index.html).
+     4. Botones con relieve   → .boton-relieve (altura del borde y hundimiento).
+     5. Tarjetas del catálogo → .tarjeta-minima.  Filtros → .chip.
+     6. Animaciones           → @keyframes al final de este archivo. Todas se
+                                 desactivan si el usuario pide menos movimiento.
+     7. Textos de la portada  → src/components/inicio/contenido.js
    ====================================================================== */
 
 @theme inline {
@@ -24,6 +37,8 @@
   --color-sobre-primario: var(--sobre-primario);
   --color-primario-suave: var(--primario-suave);
   --color-acento: var(--acento);
+  --color-sobre-acento: var(--sobre-acento);
+  --color-acento-suave: var(--acento-suave);
   --color-barra: var(--barra);
   --color-sobre-barra: var(--sobre-barra);
   --color-exito: var(--exito);
@@ -38,24 +53,30 @@
   --font-tema: var(--fuente);
 }
 
-/* ---------------- ADULTOS (predeterminado): sobrio e institucional ---------------- */
+/* ---------------- ADULTOS (predeterminado): identidad institucional ICAP ---------------- */
 :root {
   --escala-fuente: 1;
-  --fuente: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --radio: 0.5rem;
+  --fuente: 'Poppins', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --radio: 1rem;
 
-  --fondo: #f4f6f9;
-  --texto: #16202e;
+  --fondo: #f6f7fb;
+  --texto: #0d1538;
   --tarjeta: #ffffff;
-  --suave: #eef1f6;
-  --tenue: #566275;
-  --borde: #d5dbe5;
-  --primario: #0f4c81;
+  --suave: #eef0f8;
+  --tenue: #4d5675;
+  --borde: #dfe3f0;
+  --primario: #051874;
   --sobre-primario: #ffffff;
-  --primario-suave: #e2edf8;
-  --acento: #a8791a;
-  --barra: #0c2f52;
-  --sobre-barra: #e8eef6;
+  --primario-suave: #e6eafb;
+  --acento: #d40414;
+  --sobre-acento: #ffffff;
+  --acento-suave: #fde7e9;
+  --barra: #06124f;
+  --sobre-barra: #eef1ff;
+
+  /* Sombra inferior de los botones con relieve: el mismo color, más oscuro */
+  --relieve: color-mix(in srgb, var(--primario) 65%, #000);
+  --relieve-acento: color-mix(in srgb, var(--acento) 68%, #000);
 
   --exito: #14713d;
   --exito-suave: #dff3e6;
@@ -80,18 +101,20 @@
 }
 
 [data-modo='noche'] {
-  --fondo: #0d1420;
-  --texto: #e7ecf3;
-  --tarjeta: #162131;
-  --suave: #1e2c40;
-  --tenue: #a3b0c2;
-  --borde: #2c3b52;
-  --primario: #6db0ee;
-  --sobre-primario: #08213a;
-  --primario-suave: #1b3552;
-  --acento: #e2b558;
-  --barra: #0a1626;
-  --sobre-barra: #dbe5f1;
+  --fondo: #070b1f;
+  --texto: #e9ecfa;
+  --tarjeta: #0f1633;
+  --suave: #161f42;
+  --tenue: #a3abcb;
+  --borde: #252f57;
+  --primario: #8ea2ff;
+  --sobre-primario: #050b2e;
+  --primario-suave: #1a2457;
+  --acento: #ff5864;
+  --sobre-acento: #1f0003;
+  --acento-suave: #3a0d14;
+  --barra: #040820;
+  --sobre-barra: #e6e9ff;
 
   --exito: #5fd08d;
   --exito-suave: #143524;
@@ -128,6 +151,8 @@
   --sobre-primario: #ffffff;
   --primario-suave: #ffe2cf;
   --acento: #b0257a;
+  --sobre-acento: #ffffff;
+  --acento-suave: #fbe1f0;
   --barra: #1e7a52;
   --sobre-barra: #ffffff;
 }
@@ -143,6 +168,8 @@
   --sobre-primario: #2b1803;
   --primario-suave: #5a3a12;
   --acento: #ff8ecb;
+  --sobre-acento: #2b0618;
+  --acento-suave: #4a1a33;
   --barra: #123f2c;
   --sobre-barra: #f1ffe9;
 }
@@ -161,6 +188,8 @@
   --sobre-primario: #ffffff;
   --primario-suave: #ece3ff;
   --acento: #c0196f;
+  --sobre-acento: #ffffff;
+  --acento-suave: #fbe0ee;
   --barra: #2a1560;
   --sobre-barra: #efe9ff;
 }
@@ -176,6 +205,8 @@
   --sobre-primario: #1a0d3d;
   --primario-suave: #33246a;
   --acento: #ff7dc0;
+  --sobre-acento: #2a0418;
+  --acento-suave: #4a1636;
   --barra: #0b0717;
   --sobre-barra: #e9e2ff;
 }
@@ -191,7 +222,9 @@
   --primario: #00308f;
   --sobre-primario: #ffffff;
   --primario-suave: #dfe8ff;
-  --acento: #6b0057;
+  --acento: #8b0000;
+  --sobre-acento: #ffffff;
+  --acento-suave: #ffe5e5;
   --barra: #000000;
   --sobre-barra: #ffffff;
   --exito: #004d1a;
@@ -215,6 +248,8 @@
   --sobre-primario: #000000;
   --primario-suave: #333000;
   --acento: #7dfcff;
+  --sobre-acento: #000000;
+  --acento-suave: #002b2c;
   --barra: #000000;
   --sobre-barra: #ffffff;
   --exito: #7dff9b;
@@ -233,6 +268,7 @@
 }
 
 [data-contraste='alto'] .tarjeta,
+[data-contraste='alto'] .tarjeta-minima,
 [data-contraste='alto'] input,
 [data-contraste='alto'] select,
 [data-contraste='alto'] textarea,
@@ -244,6 +280,7 @@
 html {
   font-size: calc(16px * var(--escala-fuente));
   -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -261,6 +298,12 @@ body {
   ::after {
     border-color: var(--borde);
   }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+  }
 }
 
 :focus-visible {
@@ -273,24 +316,58 @@ body {
   color: var(--sobre-primario);
 }
 
+/* El logo tiene letras azul marino: sobre fondos oscuros se muestra en una placa blanca. */
+[data-modo='noche'] .logo-icap {
+  background: #ffffff;
+  border-radius: calc(var(--radio) * 0.6);
+  padding: 0.25rem 0.5rem;
+}
+
 /* Componentes base. Van en la capa "components" para que las utilidades de
    Tailwind (bg-primario, pl-9, p-4…) puedan ajustarlos en cada pantalla. */
 @layer components {
+  .contenedor {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .contenedor {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .contenedor {
+      padding-inline: 2rem;
+    }
+  }
+
   .tarjeta {
     background: var(--tarjeta);
     border: 1px solid var(--borde);
     border-radius: var(--radio);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--texto) 5%, transparent);
   }
 
   .campo-control {
     width: 100%;
     background: var(--tarjeta);
     color: var(--texto);
-    border: 1px solid var(--borde);
-    border-radius: calc(var(--radio) * 0.8);
+    border: 2px solid var(--borde);
+    border-radius: calc(var(--radio) * 0.75);
     padding: 0.5rem 0.75rem;
     font: inherit;
     font-size: 0.9375rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .campo-control:focus {
+    outline: none;
+    border-color: var(--primario);
+    box-shadow: 0 0 0 4px var(--primario-suave);
   }
 
   .campo-control:disabled {
@@ -301,6 +378,217 @@ body {
   .campo-control[aria-invalid='true'] {
     border-color: var(--peligro);
   }
+
+  /* Botón con relieve: borde inferior sólido que se hunde al pulsarlo (estilo lección interactiva).
+     Cada variante puede cambiar el color del relieve con la variable --relieve-local. */
+  .boton-relieve {
+    box-shadow: 0 4px 0 0 var(--relieve-local, var(--relieve));
+    transition: transform 0.08s, box-shadow 0.08s, filter 0.2s;
+  }
+
+  .boton-relieve:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+
+  .boton-relieve:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 0 var(--relieve-local, var(--relieve));
+  }
+
+  .boton-relieve-suave {
+    box-shadow: 0 3px 0 0 var(--borde);
+    transition: transform 0.08s, box-shadow 0.08s, background-color 0.2s;
+  }
+
+  .boton-relieve-suave:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 0 var(--borde);
+  }
+
+  /* Franja oscura de la marca (portada, llamadas a la acción): azul profundo con
+     resplandores rojo y azul y una trama de puntos, al estilo de las plataformas de cursos. */
+  .lienzo-marca {
+    background-color: var(--barra);
+    background-image:
+      radial-gradient(circle at 12% 110%, color-mix(in srgb, var(--acento) 55%, transparent), transparent 45%),
+      radial-gradient(circle at 95% -10%, color-mix(in srgb, var(--primario) 90%, #3a5bff), transparent 50%),
+      radial-gradient(color-mix(in srgb, var(--sobre-barra) 14%, transparent) 1px, transparent 1px);
+    background-size: auto, auto, 22px 22px;
+    color: var(--sobre-barra);
+  }
+
+  /* Tarjeta de catálogo: mínima, con un leve realce al pasar el cursor */
+  .tarjeta-minima {
+    background: var(--tarjeta);
+    border: 2px solid var(--borde);
+    border-radius: var(--radio);
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .tarjeta-minima:hover {
+    transform: translateY(-4px);
+    border-color: var(--primario);
+    box-shadow: 0 6px 0 0 var(--primario);
+  }
+
+  /* Filtros en forma de píldora (catálogo) */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 2px solid var(--borde);
+    border-radius: 999px;
+    background: var(--tarjeta);
+    padding: 0.375rem 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  }
+
+  .chip:hover {
+    border-color: var(--primario);
+  }
+
+  .chip:active {
+    transform: scale(0.96);
+  }
+
+  .chip[aria-pressed='true'] {
+    background: var(--primario);
+    border-color: var(--primario);
+    color: var(--sobre-primario);
+  }
+
+  /* Opción de respuesta del asistente (como una pregunta de lección) */
+  .opcion-leccion {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    border: 2px solid var(--borde);
+    border-radius: calc(var(--radio) * 0.9);
+    background: var(--tarjeta);
+    color: var(--texto);
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+    font-weight: 600;
+    box-shadow: 0 3px 0 0 var(--borde);
+    transition: transform 0.08s, box-shadow 0.08s, background-color 0.15s, border-color 0.15s;
+  }
+
+  .opcion-leccion:hover {
+    background: var(--suave);
+  }
+
+  .opcion-leccion:active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 0 var(--borde);
+  }
+
+  .opcion-leccion[aria-checked='true'] {
+    border-color: var(--primario);
+    background: var(--primario-suave);
+    color: var(--primario);
+    box-shadow: 0 3px 0 0 var(--primario);
+  }
+
+  /* Palabra resaltada con un trazo rojo que se dibuja al cargar */
+  .resaltado {
+    background-image: linear-gradient(var(--acento), var(--acento));
+    background-repeat: no-repeat;
+    background-position: 0 92%;
+    background-size: 100% 0.22em;
+    animation: trazar 0.9s 0.4s ease-out both;
+    padding-bottom: 0.05em;
+  }
+
+  /* Cinta deslizante (nombres de programas) */
+  .cinta {
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  }
+
+  .cinta-pista {
+    display: flex;
+    width: max-content;
+    animation: desplazar 45s linear infinite;
+  }
+
+  .cinta:hover .cinta-pista {
+    animation-play-state: paused;
+  }
+
+  /* Aparición al hacer scroll (ver components/ui/Revelar.jsx) */
+  .revelar {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+
+  .revelar.visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- Animaciones ---------------- */
+@keyframes subir {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes crecer {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes flotar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes desplazar {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes trazar {
+  from { background-size: 0% 0.22em; }
+  to { background-size: 100% 0.22em; }
+}
+
+@keyframes latido {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acento) 55%, transparent); }
+  70% { box-shadow: 0 0 0 16px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes rebote {
+  0% { transform: scale(0.3); opacity: 0; }
+  55% { transform: scale(1.15); opacity: 1; }
+  75% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+.animar-subir {
+  animation: subir 0.6s ease-out both;
+}
+
+.animar-crecer {
+  animation: crecer 0.6s ease-out both;
+}
+
+.animar-flotar {
+  animation: flotar 4.5s ease-in-out infinite;
+}
+
+.animar-latido {
+  animation: latido 2s ease-out infinite;
+}
+
+.animar-rebote {
+  animation: rebote 0.6s ease-out both;
 }
 
 .tabular {
@@ -308,9 +596,26 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   * {
     animation: none !important;
     transition: none !important;
+  }
+
+  .revelar {
+    opacity: 1;
+    transform: none;
+  }
+
+  .resaltado {
+    background-size: 100% 0.22em;
+  }
+
+  .cinta {
+    overflow-x: auto;
   }
 }
 
@@ -327,6 +632,7 @@ body {
 
   .tarjeta {
     border: none;
+    box-shadow: none;
   }
 
   main {

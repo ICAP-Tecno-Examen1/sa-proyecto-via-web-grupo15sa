@@ -4,11 +4,11 @@ namespace Database\Seeders;
 
 use App\Models\Beca;
 use App\Models\MetodoPago;
-use App\Models\PasarelaPago;
+use App\Models\MetodoPagoElectronico;
 use Illuminate\Database\Seeder;
 
 /**
- * Métodos de pago, pasarela PagoFácil y becas iniciales (CU4). Idempotente.
+ * Métodos de pago, credenciales de PagoFácil y becas iniciales (CU4). Idempotente.
  */
 class FinanzasSeeder extends Seeder
 {
@@ -32,18 +32,21 @@ class FinanzasSeeder extends Seeder
             'activo' => true,
         ]);
 
-        // Con credenciales en el .env la pasarela nace en modo REAL; sin ellas, SIMULADO.
+        // Credenciales desde el .env (PAGO_FACIL_TCTOKEN_*). Sin ellas queda guardado pero no activo;
+        // también se pueden cargar desde Finanzas > Métodos de pago.
         $service = config('icap.pagofacil.tc_token_service');
         $secret = config('icap.pagofacil.tc_token_secret');
 
-        PasarelaPago::firstOrCreate(['id_metodo_pago' => $qr->id_metodo_pago], [
-            'proveedor' => 'PAGOFACIL',
-            'modo' => filled($service) && filled($secret) ? PasarelaPago::REAL : PasarelaPago::SIMULADO,
-            'tc_token_service' => $service,
-            'tc_token_secret' => $secret,
-            'callback_url' => config('icap.pagofacil.callback_url'),
-            'activo' => true,
-        ]);
+        $electronico = MetodoPagoElectronico::firstOrNew(['id_metodo_pago' => $qr->id_metodo_pago]);
+
+        if (! $electronico->exists) {
+            $electronico->tc_token_service = $service;
+            $electronico->tc_token_secret = $secret;
+            $electronico->callback_url = config('icap.pagofacil.callback_url');
+            $electronico->activo = filled($service) && filled($secret);
+            $electronico->id_metodo_pago = $qr->id_metodo_pago;
+            $electronico->save();
+        }
 
         foreach ([
             ['Beca Excelencia Académica', 50, 'UAGRM', 'Para estudiantes con promedio sobresaliente.'],

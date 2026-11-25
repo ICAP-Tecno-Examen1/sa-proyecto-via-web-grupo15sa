@@ -48,8 +48,8 @@ return [
         'extensiones' => ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
     ],
 
-    // Pasarela PagoFácil (API MasterQR v2). Las credenciales reales se administran
-    // desde "Métodos de pago" y se guardan en la tabla pasarela_pago; estas
+    // PagoFácil (API MasterQR v2). Las credenciales se administran desde "Métodos de pago"
+    // y se guardan en la tabla metodo_pago_electronico (igual que en el proyecto de referencia); estas
     // variables solo son los valores iniciales del seeder.
     'pagofacil' => [
         'url_base' => env('PAGO_FACIL_URL', 'https://masterqr.pagofacil.com.bo/api/services/v2'),

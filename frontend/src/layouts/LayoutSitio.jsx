@@ -1,13 +1,15 @@
 import { ChevronDown, Eye, LogOut, Menu, UserRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Buscador from '../components/layout/Buscador'
 import ControlesVisuales from '../components/layout/ControlesVisuales'
 import Icono from '../components/layout/Icono'
+import Logo from '../components/marca/Logo'
 import Boton from '../components/ui/Boton'
 import { useAuth } from '../context/AuthContext'
 import { useAvisos } from '../context/AvisosContext'
 import { useVisitas } from '../hooks/useVisitas'
+import { RUTAS } from '../routes/rutas'
 import { cantidad } from '../utils/formato'
 
 /**
@@ -19,6 +21,7 @@ export default function LayoutSitio() {
   const { contador, titulo } = useVisitas()
   const [menuAbierto, setMenuAbierto] = useState(false)
   const { pathname } = useLocation()
+  const completa = RUTAS.some((r) => r.pantallaCompleta && matchPath(r.ruta, pathname))
 
   useEffect(() => setMenuAbierto(false), [pathname])
 
@@ -33,18 +36,29 @@ export default function LayoutSitio() {
       <div className="flex flex-1">
         {auth.autenticado && <BarraLateral abierta={menuAbierto} alCerrar={() => setMenuAbierto(false)} />}
 
-        <main id="contenido" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-7xl">
+        {/* Las rutas con "pantallaCompleta" (rutas.js) manejan su propio ancho, como la portada */}
+        {completa ? (
+          <main id="contenido" className="min-w-0 flex-1">
             <Outlet />
-          </div>
-        </main>
+          </main>
+        ) : (
+          <main id="contenido" className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-7xl">
+              <Outlet />
+            </div>
+          </main>
+        )}
       </div>
 
-      <footer className="no-imprimir border-t bg-tarjeta px-4 py-4 text-sm">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-          <p className="text-tenue">
-            <strong className="text-texto">ICAP · UAGRM</strong> — Instituto de Capacitación Popular · INF513 Tecnología Web
-          </p>
+      <footer className="no-imprimir border-t bg-tarjeta px-4 py-6 text-sm">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Logo className="h-10 w-auto" />
+            <p className="text-tenue">
+              <strong className="block text-texto">Instituto de Capacitación Popular · UAGRM</strong>
+              Formación Técnica Universitaria, que cambiará tu vida.
+            </p>
+          </div>
           {/* Contador de visitas persistente de ESTA página (tabla contador_visita) */}
           <p className="flex items-center gap-2 rounded-full border bg-suave px-3 py-1" aria-live="polite">
             <Eye className="size-4 text-primario" aria-hidden />
@@ -63,7 +77,7 @@ function Encabezado({ alAbrirMenu, menuAbierto }) {
   const auth = useAuth()
 
   return (
-    <header className="no-imprimir sticky top-0 z-30 border-b bg-tarjeta">
+    <header className="no-imprimir sticky top-0 z-30 border-b bg-tarjeta/90 backdrop-blur">
       <div className="flex items-center gap-3 px-4 py-2.5 sm:px-6">
         {auth.autenticado && (
           <button onClick={alAbrirMenu} aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={menuAbierto} className="rounded-tema border p-2 hover:bg-suave lg:hidden">
@@ -71,13 +85,10 @@ function Encabezado({ alAbrirMenu, menuAbierto }) {
           </button>
         )}
 
-        <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="ICAP UAGRM, ir al inicio">
-          <span className="grid size-10 place-items-center rounded-tema bg-primario text-sobre-primario">
-            <Icono nombre="estudiante" className="size-6" />
-          </span>
-          <span className="hidden leading-tight sm:block">
-            <span className="block text-base font-extrabold">ICAP</span>
-            <span className="block text-xs text-tenue">UAGRM</span>
+        <Link to="/" className="flex shrink-0 items-center gap-3" aria-label="ICAP UAGRM, ir al inicio">
+          <Logo className="h-9 w-auto" />
+          <span className="hidden border-l-2 pl-3 text-[0.7rem] leading-tight font-semibold text-tenue uppercase xl:block">
+            Instituto de<br />Capacitación Popular
           </span>
         </Link>
 
@@ -92,7 +103,7 @@ function Encabezado({ alAbrirMenu, menuAbierto }) {
         ) : (
           <div className="flex gap-2">
             <Boton a="/ingresar" variante="secundario" className="hidden sm:inline-flex">Ingresar</Boton>
-            <Boton a="/registro">Registrarme</Boton>
+            <Boton a="/registro" variante="acento">Registrarme</Boton>
           </div>
         )}
       </div>
@@ -101,7 +112,7 @@ function Encabezado({ alAbrirMenu, menuAbierto }) {
         <nav className="flex gap-1 overflow-x-auto border-t px-4 sm:px-6" aria-label="Navegación principal">
           {[['/', 'Inicio'], ['/catalogo', 'Catálogo de programas'], ['/verificar', 'Verificar certificado'], ['/ingresar', 'Ingresar']].map(([ruta, texto]) => (
             <NavLink key={ruta} to={ruta} end className={({ isActive }) =>
-              `border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap ${isActive ? 'border-primario text-primario' : 'border-transparent text-tenue hover:text-texto'}`}>
+              `border-b-[3px] px-3 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${isActive ? 'border-acento text-primario' : 'border-transparent text-tenue hover:text-texto'}`}>
               {texto}
             </NavLink>
           ))}
@@ -204,7 +215,7 @@ function BarraLateral({ abierta, alCerrar }) {
               </p>
               {seccion.hijos.map((opcion) => (
                 <NavLink key={opcion.id} to={opcion.ruta} className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-tema px-3 py-2 text-sm transition ${isActive ? 'bg-white/20 font-bold' : 'opacity-90 hover:bg-white/10'}`}>
+                  `flex items-center gap-2.5 rounded-tema px-3 py-2 text-sm transition ${isActive ? 'bg-white/15 font-bold shadow-[inset_4px_0_0_var(--acento)]' : 'opacity-90 hover:bg-white/10'}`}>
                   <Icono nombre={opcion.icono} /> {opcion.etiqueta}
                 </NavLink>
               ))}

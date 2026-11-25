@@ -44,7 +44,7 @@ DB_SEARCH_PATH=public          # el esquema asignado al grupo
 FRONTEND_URL=https://www.tecnoweb.org.bo/inf513/grupoXXsa/proyecto2
 FRONTEND_ROUTER=hash           # igual que VITE_ROUTER del frontend
 
-PAGO_FACIL_CALLBACK_URL="${APP_URL}/api/pagos/pasarela/callback"
+PAGO_FACIL_CALLBACK_URL="${APP_URL}/api/pagos/pagofacil/callback"
 PAGO_FACIL_WEBHOOK_SECRET=     # php -r "echo bin2hex(random_bytes(24));"
 ```
 

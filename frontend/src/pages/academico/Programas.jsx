@@ -3,7 +3,9 @@ import CrudSimple from '../../components/ui/CrudSimple'
 import { legible } from '../../utils/formato'
 import { codigo, maximo, minimo, requerido } from '../../utils/validacion'
 
-export const TIPOS_PROGRAMA = ['CURSO', 'TALLER', 'DIPLOMADO', 'PROGRAMA_TECNICO', 'SEMINARIO'].map((t) => ({ valor: t, etiqueta: legible(t) }))
+// Los mismos tipos que acepta la API (Programa::TIPOS). Las carreras son TÉCNICO MEDIO / SUPERIOR.
+export const TIPOS_PROGRAMA = ['CURSO', 'TALLER', 'SEMINARIO', 'DIPLOMADO', 'TECNICO_MEDIO', 'TECNICO_SUPERIOR', 'PROGRAMA_TECNICO']
+  .map((t) => ({ valor: t, etiqueta: legible(t) }))
 const ESTADOS = [{ valor: 'ACTIVO', etiqueta: 'Activo' }, { valor: 'INACTIVO', etiqueta: 'Inactivo' }]
 
 /** CU2 · Catálogo de programas académicos. */
@@ -11,7 +13,7 @@ export default function Programas() {
   return (
     <CrudSimple
       titulo="Programas académicos"
-      descripcion="Primer paso del catálogo: registre el programa; luego sus módulos, su malla curricular y sus ofertas."
+      descripcion="Primer paso del catálogo: registre el programa o carrera; luego sus materias (Módulos), su malla curricular y sus ofertas."
       singular="programa"
       recurso="/programas"
       id="id_programa"

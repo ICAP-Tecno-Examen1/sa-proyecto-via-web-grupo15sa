@@ -21,7 +21,8 @@ Son los «pequeños ajustes» previstos para conciliación, requisitos y reposit
 | `menu_item` | Menú dinámico: cada opción con el permiso que exige |
 | `bitacora` | Auditoría: logins exitosos y fallidos, IP, acciones, accesos denegados |
 | `visita`, `contador_visita` | Contador de visitas por página |
-| `pasarela_pago` | Configuración de PagoFácil (modo, credenciales, callback) por método de pago |
+| `metodo_pago_electronico` | Credenciales de PagoFácil por método de pago (token service/secret, callback, activo). Antes `pasarela_pago` |
+| `modulo_carrera` | Módulo de una carrera dentro de la malla: agrupa 1 o 2 materias (`modulo`). Script `sql/04_bloques_carrera.sql` |
 | `validacion_requisito` | Validación académica, financiera y documental previa al certificado |
 | `personal_access_tokens` | Sesiones de la API (Laravel Sanctum) |
 
@@ -65,3 +66,13 @@ Son los «pequeños ajustes» previstos para conciliación, requisitos y reposit
 | Corrección de nota | PENDIENTE → APROBADA · RECHAZADA |
 | Requisito del certificado | PENDIENTE → APROBADO · OBSERVADO |
 | Certificado | EMITIDO → ANULADO |
+
+## Niveles de programa
+
+`programa.tipo` admite `CURSO`, `TALLER`, `SEMINARIO`, `DIPLOMADO`, `TECNICO_MEDIO`, `TECNICO_SUPERIOR` y `PROGRAMA_TECNICO` (este último se conserva por compatibilidad).
+
+## Materias y módulos de la carrera
+
+- `modulo` es la **materia**: se califica, tiene asistencia y evaluaciones propias.
+- `modulo_carrera` es el **módulo de la carrera** dentro de una malla: agrupa 1 o 2 materias (`malla_modulo.id_modulo_carrera`). La API rechaza grupos con 0 o más de 2 materias.
+- Ejemplo cargado con `php artisan db:seed --class=CarreraEjemploSeeder --force`: Auxiliar Contable (técnico medio), con 4 módulos y 5 materias.

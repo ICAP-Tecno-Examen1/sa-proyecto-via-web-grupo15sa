@@ -1,8 +1,11 @@
-# Base de datos PostgreSQL SOLO para desarrollo local.
-# En producción se usa el PostgreSQL institucional (db.tecnoweb.org.bo).
+# Entorno de desarrollo local. En producción se usa el PostgreSQL institucional
+# (db.tecnoweb.org.bo) y el servidor de tecnoweb: ver docs/despliegue-tecnoweb.md
 #
-#   docker compose up -d      -> levanta la BD en localhost:5433
-#   docker compose down -v    -> la elimina junto con sus datos
+#   docker compose up -d                        -> solo la BD en localhost:5433
+#                                                  (la API y el cliente se ejecutan en la terminal)
+#   docker compose --profile app up -d --build  -> BD + API + cliente, todo en Docker
+#   docker compose --profile app down           -> detiene todo (los datos se conservan)
+#   docker compose --profile app down -v        -> detiene todo y BORRA los datos
 services:
   db:
     image: postgres:15
@@ -17,6 +20,53 @@ services:
       - "5433:5432"
     volumes:
       - icap_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U icap -d db_icap"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # CAPA 2 · API Laravel -> http://localhost:8000/api
+  backend:
+    profiles: ["app"]
+    build: ./backend
+    container_name: icap_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Por defecto, la BD local del compose (servicio "db").
+      # Para la base COMPARTIDA del grupo, estas variables se definen en el .env de la raíz
+      # (copiar .env.example): ver README, "Modo A · Base compartida".
+      DB_HOST: ${ICAP_DB_HOST:-db}
+      DB_PORT: ${ICAP_DB_PORT:-5432}
+      DB_DATABASE: ${ICAP_DB_DATABASE:-db_icap}
+      DB_USERNAME: ${ICAP_DB_USERNAME:-icap}
+      DB_PASSWORD: ${ICAP_DB_PASSWORD:-icap_local}
+      ICAP_MIGRAR: ${ICAP_MIGRAR:-true}
+      ICAP_SEMBRAR: ${ICAP_SEMBRAR:-true}
+    ports:
+      - "${ICAP_API_PORT:-8000}:8000"
+    volumes:
+      - icap_archivos:/app/storage/app
+
+  # CAPA 1 · Cliente React -> http://localhost:5173
+  frontend:
+    profiles: ["app"]
+    build: ./frontend
+    container_name: icap_web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: /api
+      VITE_BASE: /
+      VITE_ROUTER: browser
+      VITE_PROXY_API: http://backend:8000
+    ports:
+      - "${ICAP_WEB_PORT:-5173}:5173"
 
 volumes:
   icap_pgdata:
+  icap_archivos:

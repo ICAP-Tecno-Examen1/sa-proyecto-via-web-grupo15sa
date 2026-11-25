@@ -5,11 +5,9 @@ namespace App\Services;
 use App\Exceptions\ReglaNegocioException;
 use App\Models\Mensualidad;
 use App\Models\MetodoPago;
+use App\Models\MetodoPagoElectronico;
 use App\Models\Pago;
-use App\Models\PasarelaPago;
 use App\Models\Usuario;
-use App\Support\CodigoQr;
-use App\Support\Frontend;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -18,53 +16,41 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * CU4 · Pasarela digital PagoFácil (API MasterQR v2).
- *
- * Mismo flujo que el proyecto de referencia del grupo:
- *   1. login            -> token de acceso (se guarda en caché 23 h)
- *   2. generate-qr      -> QR dinámico para un número de pedido único
- *   3. el cliente paga y la pantalla consulta el estado cada 5 segundos
- *   4. PagoFácil llama al webhook (callback) con PedidoID y Estado = 2
- *   5. el pago se confirma, la cuota queda PAGADA y la matrícula se activa
- *
- * Modo SIMULADO: cuando la pasarela no tiene credenciales reales (o así se
- * configura), el QR se genera localmente y apunta a una página del propio
- * sistema que hace de banco y dispara el mismo webhook. Sirve para
- * demostrar el flujo completo sin mover dinero.
+ * CU4 · Pago electrónico con PagoFácil (API MasterQR v2), como en el proyecto de referencia del grupo:
+ *   1. login         -> token de acceso (caché 23 h)
+ *   2. generate-qr   -> QR para un número de pedido único
+ *   3. el cliente consulta el estado cada 5 s
+ *   4. PagoFácil avisa al webhook (callback) con Estado = 2 y se confirma el pago
+ * Las credenciales están en metodo_pago_electronico (un solo método activo a la vez).
  */
-class PasarelaPagoService
+class PagoFacilService
 {
     private const CACHE_TOKEN = 'pagofacil_access_token_v2';
 
-    /** Estados con los que la pasarela informa un pago aprobado (en MasterQR el aprobado es 2). */
+    /** En MasterQR el estado aprobado es 2; se aceptan también los textos por robustez. */
     private const ESTADOS_APROBADOS = ['2', 'APROBADO', 'APPROVED', 'COMPLETED', 'PAID', 'SUCCESS', 'PAGADO'];
 
     public function __construct(private readonly PagoService $pagos) {}
 
-    /** Pasarela habilitada (método de pago activo de tipo PASARELA con configuración activa). */
-    public function configuracion(): ?PasarelaPago
+    /** Método electrónico activo, de tipo PASARELA. */
+    public function configuracion(): ?MetodoPagoElectronico
     {
-        return PasarelaPago::where('activo', true)
+        return MetodoPagoElectronico::where('activo', true)
             ->whereHas('metodoPago', fn ($q) => $q->where('activo', true)->where('tipo', MetodoPago::PASARELA))
             ->with('metodoPago')
             ->first();
     }
 
-    // ------------------------------------------------------------------
-    // Generación del QR
-    // ------------------------------------------------------------------
-
     /**
-     * Inicia (o reanuda) el pago por QR de una cuota. Siempre emite un número
-     * de transacción nuevo, de modo que el QR puede regenerarse cuantas veces
-     * haga falta sin que la pasarela lo rechace por duplicado.
+     * Inicia el pago por QR de una cuota. Siempre emite un número de pedido nuevo,
+     * así el QR puede regenerarse sin que PagoFácil lo rechace por duplicado.
      */
     public function iniciar(Mensualidad $cuota, array $datosPagador, ?string $parentesco, Usuario $actor): array
     {
         $config = $this->configuracion();
 
-        if (! $config) {
-            throw new ReglaNegocioException('El pago por QR no está habilitado en este momento.');
+        if (! $config || ! $config->tieneCredenciales()) {
+            throw new ReglaNegocioException('El pago con QR de PagoFácil no está configurado. Avise al Coordinador Financiero.');
         }
 
         $matricula = $this->pagos->exigirCuotaPagable($cuota);
@@ -103,9 +89,7 @@ class PasarelaPagoService
             return $pago;
         });
 
-        $qr = $config->esReal()
-            ? $this->generarQrReal($config, $pago, $cuota)
-            : $this->generarQrSimulado($pago);
+        $qr = $this->generarQr($config, $pago, $cuota);
 
         if (! empty($qr['transaccion_id'])) {
             $pago->update(['pasarela_transaccion_id' => (string) $qr['transaccion_id']]);
@@ -116,11 +100,10 @@ class PasarelaPagoService
         return ['pago' => $pago->refresh()->load(['pagador', 'metodoPago', 'mensualidad']), 'qr' => $qr];
     }
 
-    private function generarQrReal(PasarelaPago $config, Pago $pago, Mensualidad $cuota): array
+    private function generarQr(MetodoPagoElectronico $config, Pago $pago, Mensualidad $cuota): array
     {
         $estudiante = $pago->matricula->usuario;
         $pagador = $pago->pagador;
-        $detalle = 'Cuota '.$cuota->numero_cuota.' - Matrícula '.$pago->matricula->numero_registro;
 
         try {
             $cuerpo = $this->cliente($config)->post('/generate-qr', [
@@ -137,7 +120,7 @@ class PasarelaPagoService
                 'callbackUrl' => $this->urlCallback($config),
                 'orderDetail' => [[
                     'serial' => 1,
-                    'product' => $detalle,
+                    'product' => 'Cuota '.$cuota->numero_cuota.' - Matrícula '.$pago->matricula->numero_registro,
                     'quantity' => 1,
                     'price' => (float) $pago->monto,
                     'discount' => 0,
@@ -165,7 +148,6 @@ class PasarelaPagoService
         }
 
         return [
-            'modo' => PasarelaPago::REAL,
             'imagen' => $imagen,
             'transaccion_id' => $valores['transactionId'] ?? null,
             'numero_transaccion' => $pago->numero_transaccion,
@@ -174,28 +156,9 @@ class PasarelaPagoService
         ];
     }
 
-    private function generarQrSimulado(Pago $pago): array
-    {
-        $url = Frontend::url('/pasarela-simulada/'.$pago->numero_transaccion);
-
-        return [
-            'modo' => PasarelaPago::SIMULADO,
-            'imagen' => CodigoQr::dataUri($url),
-            'transaccion_id' => 'SIM-'.$pago->id_pago.'-'.time(),
-            'numero_transaccion' => $pago->numero_transaccion,
-            'expira' => now()->addMinutes(30)->format('Y-m-d H:i:s'),
-            'monto' => (float) $pago->monto,
-            'url_simulada' => $url,
-        ];
-    }
-
-    // ------------------------------------------------------------------
-    // Consulta de estado (sondeo desde el cliente)
-    // ------------------------------------------------------------------
-
     /**
-     * Estado actual del pago. La fuente principal es el webhook; como respaldo,
-     * en modo REAL se consulta la transacción a PagoFácil.
+     * Estado del pago para el sondeo del cliente. El webhook es la fuente principal;
+     * como respaldo se consulta la transacción a PagoFácil.
      */
     public function consultarEstado(Pago $pago): Pago
     {
@@ -205,7 +168,7 @@ class PasarelaPagoService
 
         $config = $this->configuracion();
 
-        if (! $config?->esReal()) {
+        if (! $config || ! $config->tieneCredenciales()) {
             return $pago;
         }
 
@@ -218,7 +181,7 @@ class PasarelaPagoService
             $estado = $valores['paymentStatus'] ?? ($valores['status'] ?? ($valores['Estado'] ?? ($valores['estado'] ?? null)));
 
             if ($estado !== null && $this->estaAprobado($estado)) {
-                return $this->pagos->confirmar($pago, null, 'Confirmado por consulta a la pasarela PagoFácil.');
+                return $this->pagos->confirmar($pago, null, 'Confirmado por consulta a PagoFácil.');
             }
         } catch (Throwable $e) {
             Log::warning('PagoFácil: no se pudo consultar la transacción', ['pago' => $pago->id_pago, 'error' => $e->getMessage()]);
@@ -227,13 +190,8 @@ class PasarelaPagoService
         return $pago;
     }
 
-    // ------------------------------------------------------------------
-    // Webhook
-    // ------------------------------------------------------------------
-
     /**
-     * Procesa la notificación de la pasarela. PagoFácil envía PedidoID (nuestro
-     * número de transacción) y Estado. Es idempotente.
+     * Procesa la notificación de PagoFácil (PedidoID + Estado). Es idempotente.
      *
      * @return array{ok: bool, msg: string}
      */
@@ -268,12 +226,12 @@ class PasarelaPagoService
             $pago->update(['pasarela_transaccion_id' => (string) $datos['transactionId']]);
         }
 
-        $this->pagos->confirmar($pago, null, 'Confirmado automáticamente por la pasarela de pagos.');
+        $this->pagos->confirmar($pago, null, 'Confirmado automáticamente por PagoFácil.');
 
         return ['ok' => true, 'msg' => "Pago {$pago->id_pago} confirmado"];
     }
 
-    /** Valida el secreto compartido que se anexó a la URL de callback. */
+    /** Valida el secreto que se anexó a la URL de notificación (?token=...). */
     public function tokenValido(?string $token): bool
     {
         $secreto = config('icap.pagofacil.webhook_secret');
@@ -287,41 +245,20 @@ class PasarelaPagoService
         return is_string($token) && hash_equals($secreto, $token);
     }
 
-    // ------------------------------------------------------------------
-    // Pasarela simulada
-    // ------------------------------------------------------------------
-
-    /** Datos que muestra la página "banco simulado" al escanear el QR. */
-    public function pagoSimulado(string $numero): Pago
+    /** Descarta el token de acceso guardado (cuando cambian las credenciales). */
+    public static function olvidarToken(?string $tokenService): void
     {
-        $pago = Pago::where('numero_transaccion', $numero)->with(['matricula.oferta.malla.programa', 'mensualidad', 'pagador'])->first();
-
-        if (! $pago || $this->configuracion()?->esReal()) {
-            throw new ReglaNegocioException('La orden de pago no existe o ya no es válida.', 404);
+        if (filled($tokenService)) {
+            Cache::forget(self::claveToken($tokenService));
         }
-
-        return $pago;
     }
 
-    public function resolverSimulado(string $numero, bool $aprobar): array
+    private static function claveToken(string $tokenService): string
     {
-        $pago = $this->pagoSimulado($numero);
-
-        if (! $aprobar) {
-            return ['ok' => true, 'msg' => 'Pago cancelado por el usuario', 'estado' => $pago->estado_conciliacion];
-        }
-
-        // Se recorre el mismo camino que el webhook real: PedidoID + Estado = 2.
-        $resultado = $this->procesarCallback(['PedidoID' => $numero, 'Estado' => 2]);
-
-        return [...$resultado, 'estado' => $pago->refresh()->estado_conciliacion];
+        return self::CACHE_TOKEN.'_'.md5($tokenService);
     }
 
-    // ------------------------------------------------------------------
-    // Cliente HTTP de PagoFácil
-    // ------------------------------------------------------------------
-
-    private function cliente(PasarelaPago $config): PendingRequest
+    private function cliente(MetodoPagoElectronico $config): PendingRequest
     {
         return Http::baseUrl(config('icap.pagofacil.url_base'))
             ->timeout(30)
@@ -330,12 +267,8 @@ class PasarelaPagoService
             ->withToken($this->login($config));
     }
 
-    private function login(PasarelaPago $config): string
+    private function login(MetodoPagoElectronico $config): string
     {
-        if (! $config->tieneCredenciales()) {
-            throw new ReglaNegocioException('La pasarela PagoFácil no tiene credenciales configuradas.');
-        }
-
         $clave = self::claveToken($config->tc_token_service);
 
         if ($token = Cache::get($clave)) {
@@ -366,23 +299,10 @@ class PasarelaPagoService
         return $token;
     }
 
-    /** Descarta el token de acceso guardado (se usa cuando cambian las credenciales). */
-    public static function olvidarToken(?string $tokenService): void
+    /** URL de notificación que PagoFácil invocará, con el secreto anexado. */
+    private function urlCallback(MetodoPagoElectronico $config): string
     {
-        if (filled($tokenService)) {
-            Cache::forget(self::claveToken($tokenService));
-        }
-    }
-
-    private static function claveToken(string $tokenService): string
-    {
-        return self::CACHE_TOKEN.'_'.md5($tokenService);
-    }
-
-    /** URL que PagoFácil invocará al confirmarse el pago, con el secreto anexado. */
-    private function urlCallback(PasarelaPago $config): string
-    {
-        $url = $config->callback_url ?: (config('icap.pagofacil.callback_url') ?: url('/api/pagos/pasarela/callback'));
+        $url = $config->callback_url ?: (config('icap.pagofacil.callback_url') ?: url('/api/pagos/pagofacil/callback'));
         $secreto = config('icap.pagofacil.webhook_secret');
 
         if (filled($secreto) && ! str_contains($url, 'token=')) {
@@ -397,7 +317,7 @@ class PasarelaPagoService
         return in_array(strtoupper(trim((string) $estado)), self::ESTADOS_APROBADOS, true);
     }
 
-    /** Busca por el número exacto y, si el QR fue regenerado, por el id incluido en el número. */
+    /** Busca por el número exacto y, si el QR se regeneró, por el id incluido en el número. */
     private function buscarPorNumero(string $numero): ?Pago
     {
         $pago = Pago::where('numero_transaccion', $numero)->first();

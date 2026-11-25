@@ -12,3 +12,6 @@ dist/
 # Archivos subidos por los usuarios y generados por el sistema
 backend/storage/app/private/
 backend/storage/logs/*.log
+
+# Respaldos de la base compartida (no versionar)
+backups/

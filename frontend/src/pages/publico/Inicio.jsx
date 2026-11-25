@@ -1,70 +1,126 @@
-import { Award, BookOpen, QrCode, Wallet } from 'lucide-react'
+import { ArrowRight, QrCode } from 'lucide-react'
 import TarjetaOferta from '../../components/catalogo/TarjetaOferta'
+import AsistentePrograma from '../../components/inicio/AsistentePrograma'
+import Cifras from '../../components/inicio/Cifras'
+import Cinta from '../../components/inicio/Cinta'
+import { PORTADA } from '../../components/inicio/contenido'
+import Perfiles from '../../components/inicio/Perfiles'
+import Senda from '../../components/inicio/Senda'
+import Logo from '../../components/marca/Logo'
 import { Estado, Vacio } from '../../components/ui/Basicos'
 import Boton from '../../components/ui/Boton'
+import Revelar from '../../components/ui/Revelar'
 import { useAuth } from '../../context/AuthContext'
 import { useConsulta } from '../../hooks/useConsulta'
 
-const PASOS = [
-  { Icono: BookOpen, titulo: '1. Elige tu programa', texto: 'Revisa el catálogo: costos, duración, modalidad y módulos.' },
-  { Icono: Award, titulo: '2. Preinscríbete', texto: 'Regístrate, completa tus datos y adjunta tus documentos una sola vez.' },
-  { Icono: Wallet, titulo: '3. Paga en línea', texto: 'Con QR o subiendo tu comprobante. Tu matrícula se activa al confirmarse.' },
-  { Icono: QrCode, titulo: '4. Obtén tu certificado', texto: 'Digital, con código único y QR verificable por cualquier persona.' },
-]
-
-/** Página principal del sitio. */
+/**
+ * Portada del sitio. Ocupa todo el ancho (ruta con "pantallaCompleta" en rutas.js).
+ * Los textos están en components/inicio/contenido.js y los estilos en styles/index.css.
+ */
 export default function Inicio() {
   const auth = useAuth()
   const catalogo = useConsulta('/publico/catalogo')
+  const ofertas = catalogo.datos?.ofertas
 
   return (
-    <div className="space-y-10">
-      <section className="tarjeta overflow-hidden bg-primario p-8 text-sobre-primario sm:p-12">
-        <p className="text-sm font-bold tracking-widest uppercase opacity-80">Universidad Autónoma Gabriel René Moreno</p>
-        <h1 className="mt-2 max-w-3xl text-3xl leading-tight font-extrabold sm:text-5xl">Instituto de Capacitación Popular</h1>
-        <p className="mt-4 max-w-2xl text-base opacity-90 sm:text-lg">
-          Capacítate con programas cortos y certificados. Inscríbete, paga y sigue tus notas desde un solo lugar.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Boton a="/catalogo" tamano="lg" className="!bg-sobre-primario !text-primario">Ver catálogo de programas</Boton>
-          {auth.autenticado
-            ? <Boton a="/panel" tamano="lg" variante="secundario" className="!border-sobre-primario !bg-transparent !text-sobre-primario">Ir a mi panel</Boton>
-            : <Boton a="/registro" tamano="lg" variante="secundario" className="!border-sobre-primario !bg-transparent !text-sobre-primario">Crear mi cuenta</Boton>}
-        </div>
-      </section>
+    <>
+      {/* 1. PORTADA: mensaje + asistente interactivo */}
+      <section className="lienzo-marca overflow-hidden">
+        <div className="contenedor grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-[1.1fr_1fr] lg:py-24">
+          <div className="animar-subir">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-bold tracking-widest uppercase">
+              <span className="size-2 rounded-full bg-acento" aria-hidden /> {PORTADA.antetitulo}
+            </p>
+            <h1 className="mt-6 text-4xl leading-[1.05] font-black sm:text-6xl">
+              {PORTADA.titulo} <span className="resaltado">{PORTADA.resaltado}</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-base opacity-85 sm:text-lg">{PORTADA.descripcion}</p>
 
-      <section aria-labelledby="como-funciona">
-        <h2 id="como-funciona" className="mb-4 text-xl font-bold">¿Cómo funciona?</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PASOS.map(({ Icono, titulo, texto }) => (
-            <div key={titulo} className="tarjeta p-5">
-              <span className="mb-3 grid size-11 place-items-center rounded-tema bg-primario-suave text-primario"><Icono className="size-6" aria-hidden /></span>
-              <h3 className="font-bold">{titulo}</h3>
-              <p className="mt-1 text-sm text-tenue">{texto}</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Boton a={auth.autenticado ? '/panel' : '/registro'} variante="acento" tamano="lg">
+                {auth.autenticado ? 'Ir a mi panel' : PORTADA.accionPrincipal} <ArrowRight className="size-5" aria-hidden />
+              </Boton>
+              <Boton a="/catalogo" variante="contorno" tamano="lg">{PORTADA.accionSecundaria}</Boton>
             </div>
-          ))}
+
+            <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold opacity-85">
+              {PORTADA.garantias.map(({ Icono, texto }) => (
+                <li key={texto} className="flex items-center gap-2"><Icono className="size-4 text-acento" aria-hidden /> {texto}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="animar-crecer [animation-delay:0.15s]">
+            <AsistentePrograma ofertas={ofertas} cargando={catalogo.cargando} />
+          </div>
         </div>
       </section>
 
-      <section aria-labelledby="ofertas-abiertas">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <h2 id="ofertas-abiertas" className="text-xl font-bold">Inscripciones abiertas</h2>
-          <Boton a="/catalogo" variante="fantasma">Ver todo el catálogo</Boton>
-        </div>
-        <Estado consulta={catalogo}>
-          {({ ofertas }) => ofertas.length === 0
-            ? <div className="tarjeta"><Vacio titulo="No hay ofertas abiertas en este momento">Vuelve pronto: publicamos nuevas ofertas cada gestión.</Vacio></div>
-            : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{ofertas.slice(0, 3).map((o) => <TarjetaOferta key={o.id_oferta} oferta={o} />)}</div>}
-        </Estado>
+      {/* 2. CINTA con los programas abiertos */}
+      <Cinta ofertas={ofertas} />
+
+      {/* 3. RUTA DE APRENDIZAJE */}
+      <section className="contenedor py-20 sm:py-24" aria-labelledby="titulo-ruta">
+        <Revelar className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-bold tracking-widest text-acento uppercase">Tu ruta</p>
+          <h2 id="titulo-ruta" className="mt-2 text-3xl font-black sm:text-4xl">Del interés al certificado, paso a paso</h2>
+          <p className="mt-3 text-tenue">Cada etapa se hace en línea y siempre sabes en qué punto estás.</p>
+        </Revelar>
+        <Senda />
       </section>
 
-      <section className="tarjeta flex flex-wrap items-center justify-between gap-4 p-6">
-        <div>
-          <h2 className="text-lg font-bold">¿Tienes un certificado del ICAP?</h2>
-          <p className="text-sm text-tenue">Comprueba su autenticidad con el código único o escaneando su QR. No necesitas cuenta.</p>
-        </div>
-        <Boton a="/verificar" icono={QrCode} variante="secundario">Verificar certificado</Boton>
+      {/* 4. CIFRAS reales del catálogo (solo si hay ofertas: mostrar ceros no motiva a nadie) */}
+      {ofertas?.length > 0 && (
+        <section className="lienzo-marca py-16" aria-label="El ICAP en cifras">
+          <div className="contenedor">
+            <Cifras ofertas={ofertas} />
+          </div>
+        </section>
+      )}
+
+      {/* 5. UNA PLATAFORMA PARA TODOS */}
+      <section className="contenedor py-20 sm:py-24" aria-labelledby="titulo-perfiles">
+        <Revelar className="mx-auto mb-10 max-w-2xl text-center">
+          <p className="text-sm font-bold tracking-widest text-acento uppercase">Una plataforma para todos</p>
+          <h2 id="titulo-perfiles" className="mt-2 text-3xl font-black sm:text-4xl">Estudiantes, docentes y administración, conectados</h2>
+        </Revelar>
+        <Perfiles />
       </section>
-    </div>
+
+      {/* 6. OFERTAS ABIERTAS */}
+      <section className="border-t bg-tarjeta py-20" aria-labelledby="titulo-ofertas">
+        <div className="contenedor">
+          <Revelar className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold tracking-widest text-acento uppercase">Inscripciones abiertas</p>
+              <h2 id="titulo-ofertas" className="mt-2 text-3xl font-black sm:text-4xl">Próximos inicios</h2>
+            </div>
+            <Boton a="/catalogo" variante="secundario">Ver todo el catálogo <ArrowRight className="size-4" aria-hidden /></Boton>
+          </Revelar>
+          <Estado consulta={catalogo}>
+            {({ ofertas: lista }) => lista.length === 0
+              ? <div className="tarjeta"><Vacio titulo="No hay ofertas abiertas en este momento">Vuelve pronto: publicamos nuevas ofertas cada gestión.</Vacio></div>
+              : (
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {lista.slice(0, 3).map((o, i) => <Revelar key={o.id_oferta} retardo={i * 0.1} className="flex"><TarjetaOferta oferta={o} /></Revelar>)}
+                </div>
+              )}
+          </Estado>
+        </div>
+      </section>
+
+      {/* 7. LLAMADA FINAL */}
+      <section className="contenedor py-20">
+        <Revelar className="lienzo-marca relative overflow-hidden rounded-[calc(var(--radio)*1.5)] px-6 py-12 text-center sm:px-12 sm:py-16">
+          <Logo variante="marca" placa className="mx-auto h-16 w-auto" />
+          <h2 className="mx-auto mt-6 max-w-2xl text-3xl font-black sm:text-4xl">Tu próximo paso empieza hoy</h2>
+          <p className="mx-auto mt-3 max-w-xl opacity-85">Crea tu cuenta en un minuto y preinscríbete en el programa que elijas.</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {!auth.autenticado && <Boton a="/registro" variante="acento" tamano="lg">Crear mi cuenta gratis</Boton>}
+            <Boton a="/verificar" variante="claro" tamano="lg" icono={QrCode}>Verificar un certificado</Boton>
+          </div>
+        </Revelar>
+      </section>
+    </>
   )
 }

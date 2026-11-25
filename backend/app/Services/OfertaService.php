@@ -82,7 +82,7 @@ class OfertaService
     // ------------------------------------------------------------------
 
     /** Relaciones que necesita resumen(). */
-    public const RELACIONES = ['malla.programa', 'malla.mallaModulos', 'aranceles'];
+    public const RELACIONES = ['malla.programa', 'malla.mallaModulos', 'malla.bloques', 'aranceles'];
 
     /** Ficha corta de la oferta: programa, duración, modalidad, cupos y costos. */
     public function resumen(OfertaAcademica $oferta): array
@@ -103,6 +103,8 @@ class OfertaService
                 'version' => $oferta->malla->version,
                 'horas_totales' => $oferta->malla->horas_totales,
                 'cantidad_modulos' => $oferta->malla->mallaModulos->count(),
+                // Carreras: módulos que agrupan 1 o 2 materias (0 si la malla no los usa)
+                'cantidad_bloques' => $oferta->malla->bloques->count(),
             ],
             'planes_pago' => $planes->map(fn ($a) => $a->only(['id_arancel', 'concepto', 'monto', 'tipo_cobro', 'numero_cuotas'])),
             'costo_desde' => $planes->min('monto'),
@@ -119,7 +121,7 @@ class OfertaService
     /** Ficha completa: además lista los módulos con sus docentes. */
     public function detalle(OfertaAcademica $oferta, bool $conContratos = false): array
     {
-        $oferta->load([...self::RELACIONES, 'ofertaModulos.mallaModulo.modulo', 'ofertaModulos.asignaciones.docente']);
+        $oferta->load([...self::RELACIONES, 'ofertaModulos.mallaModulo.modulo', 'ofertaModulos.mallaModulo.bloque', 'ofertaModulos.asignaciones.docente']);
 
         $modulos = $oferta->ofertaModulos
             ->sortBy(fn ($om) => $om->mallaModulo->orden)
@@ -134,6 +136,7 @@ class OfertaService
                 'nombre' => $om->mallaModulo->modulo->nombre,
                 'descripcion' => $om->mallaModulo->modulo->descripcion,
                 'horas' => $om->mallaModulo->modulo->horas,
+                'bloque' => $om->mallaModulo->bloque?->only(['id_modulo_carrera', 'nombre', 'orden']),
                 'docentes' => $om->asignaciones->where('estado', 'ACTIVO')->map(fn ($a) => $a->docente->nombre_completo)->values(),
                 // Los datos de contratación y honorarios solo viajan a quien gestiona la oferta.
                 'asignaciones' => $conContratos

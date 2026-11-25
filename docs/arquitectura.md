@@ -57,7 +57,7 @@ El cliente **no** tiene reglas de negocio ni accede a la base de datos: solo lla
 | `Acceso` | CU1 usuarios, roles, perfil |
 | `Academico`, `Publico` | CU2 programas, mallas, ofertas, catálogo |
 | `Inscripcion` | CU3 preinscripción, expediente, matrícula |
-| `Finanzas` | CU4 aranceles, becas, pagos, pasarela |
+| `Finanzas` | CU4 aranceles, becas, pagos, PagoFácil |
 | `Evaluacion` | CU5 asistencia, notas, correcciones |
 | `Certificacion` | CU6 requisitos y certificados |
 | `Documental` | CU7 repositorio |

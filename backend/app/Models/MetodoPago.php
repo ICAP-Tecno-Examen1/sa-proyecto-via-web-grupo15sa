@@ -18,9 +18,9 @@ class MetodoPago extends Modelo
         'activo' => 'boolean',
     ];
 
-    public function pasarela()
+    public function electronico()
     {
-        return $this->hasOne(PasarelaPago::class, 'id_metodo_pago');
+        return $this->hasOne(MetodoPagoElectronico::class, 'id_metodo_pago');
     }
 
     public function pagos()

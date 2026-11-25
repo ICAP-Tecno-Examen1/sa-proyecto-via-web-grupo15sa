@@ -209,7 +209,7 @@ class DemoSeeder extends Seeder
 
             $usuario = Usuario::create([
                 'nombres' => $p[0], 'apellidos' => $p[1], 'tipo_documento' => 'CI', 'ci' => (string) (8100100 + $i * 37),
-                'correo' => $username.'@correo.bo', 'telefono' => '7'.(6000000 + $i * 1111), 'direccion' => 'Santa Cruz de la Sierra',
+                'correo' => $username.'@icap.edu.bo', 'telefono' => '7'.(6000000 + $i * 1111), 'direccion' => 'Santa Cruz de la Sierra',
                 'fecha_nacimiento' => (1995 + $i % 8).'-0'.(1 + $i % 9).'-15', 'estado' => 'ACTIVO',
                 'fecha_registro' => now()->subMonths(14 - $i), 'username' => $username, 'password_hash' => $hash,
             ]);

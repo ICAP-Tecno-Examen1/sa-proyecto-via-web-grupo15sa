@@ -37,7 +37,7 @@ class UsuarioSeeder extends Seeder
                 'apellidos' => $apellidos,
                 'ci' => $ci,
                 'tipo_documento' => 'CI',
-                'correo' => $username.'@icap.uagrm.edu.bo',
+                'correo' => $username.'@icap.edu.bo',
                 'telefono' => '7'.substr($ci, 0, 7),
                 'direccion' => 'Santa Cruz de la Sierra',
                 'estado' => Usuario::ACTIVO,

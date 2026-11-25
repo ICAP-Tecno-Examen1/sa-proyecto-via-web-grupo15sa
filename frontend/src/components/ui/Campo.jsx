@@ -1,10 +1,12 @@
-import { useId } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { useId, useState } from 'react'
 
 /**
  * Campo de formulario con etiqueta, ayuda y mensaje de error accesibles.
  * Recibe directamente lo que devuelve useFormulario().campo('nombre').
  *
  *   tipo: text | email | password | number | date | textarea | select | file | checkbox | casillas
+ *   password: incluye un botón (ojito) para mostrar u ocultar lo escrito
  *   casillas: varias opciones a la vez; el valor es un arreglo
  *   opciones (select): [{ valor, etiqueta }]  o  ['A', 'B']
  */
@@ -24,6 +26,7 @@ export default function Campo({
   ...resto
 }) {
   const id = useId()
+  const [visible, setVisible] = useState(false)
   const idAyuda = `${id}-ayuda`
   const comunes = {
     id,
@@ -85,6 +88,24 @@ export default function Campo({
           {etiqueta}
         </label>
         {error && <p className="mt-1 text-xs font-medium text-peligro">{error}</p>}
+      </div>
+    )
+  } else if (tipo === 'password') {
+    // Contraseña con botón de "ojito" para mostrarla u ocultarla
+    control = (
+      <div className="relative">
+        <input type={visible ? 'text' : 'password'} {...comunes} className="campo-control pr-11" value={valor ?? ''} onChange={(e) => alCambiar(e.target.value)} />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-pressed={visible}
+          aria-controls={id}
+          title={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-tema text-tenue hover:text-primario"
+        >
+          {visible ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
+        </button>
       </div>
     )
   } else {

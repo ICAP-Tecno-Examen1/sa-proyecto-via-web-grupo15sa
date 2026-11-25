@@ -1,0 +1,12 @@
+vendor
+node_modules
+.env
+.env.production
+.phpunit.result.cache
+storage/logs/*.log
+storage/app/private
+storage/framework/cache/data
+storage/framework/sessions/*
+storage/framework/views/*.php
+bootstrap/cache/*.php
+database/database.sqlite

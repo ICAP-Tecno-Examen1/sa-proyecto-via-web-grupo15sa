@@ -22,4 +22,9 @@ class MallaModulo extends Modelo
     {
         return $this->belongsTo(Modulo::class, 'id_modulo');
     }
+
+    public function bloque()
+    {
+        return $this->belongsTo(ModuloCarrera::class, 'id_modulo_carrera');
+    }
 }

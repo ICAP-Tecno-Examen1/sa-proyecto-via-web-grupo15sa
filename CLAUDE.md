@@ -24,7 +24,7 @@ docker compose up -d
 
 # Backend
 php artisan serve --host=127.0.0.1 --port=8000
-php artisan migrate --seed                 # schema + triggers + roles, permissions, menu, accounts
+php artisan migrate --seed                 # schema + triggers + roles, permissions, menu, payment methods, accounts
 php artisan db:seed --class=DemoSeeder     # optional demo data
 vendor\bin\pint                            # PHP formatter
 
@@ -39,7 +39,7 @@ npm run lint                               # oxlint
 
 ### Tests
 
-Tests run against a real PostgreSQL database `db_icap_test` (triggers are part of the system, so SQLite is not an option). `phpunit.xml` overrides only `DB_DATABASE`; host and credentials come from `backend/.env`.
+Tests run against a real PostgreSQL database `db_icap_test` (triggers are part of the system, so SQLite is not an option). `phpunit.xml` forces the local Docker database (host, port, user, password and `db_icap_test`), so tests never touch the shared database. `tests/Feature/ConfiguracionPruebasTest.php` fails if that changes.
 
 ```powershell
 docker exec icap_db psql -U icap -d db_icap -c "CREATE DATABASE db_icap_test OWNER icap"   # once
@@ -63,6 +63,8 @@ Request path: `routes/api.php` → middleware (`auth:sanctum`, `usuario.activo`,
 - **Services** (`app/Services/`) hold the business rules. A broken rule throws `App\Exceptions\ReglaNegocioException`, which renders as `422 {message}` in Spanish.
 - **Models** all extend `App\Models\Modelo` (no timestamps, `$guarded = []`). Tables are singular Spanish names with `id_<tabla>` primary keys, and state values are class constants (`Arancel::ACTIVO`, `Bitacora::ACCION`). `Usuario` is the exception: it extends `Authenticatable` and authenticates with `password_hash` (the `password` column is unused).
 - **Errors**: `bootstrap/app.php` forces every exception to render as JSON with a Spanish `message`. Validation messages come from `lang/es/validation.php`.
+- **Links to the SPA** (certificate QR, simulated gateway) must be built with `App\Support\Frontend::url()`, which honours the browser/hash router setting.
+- **Uploaded files** go to the `local` disk (`storage/app/private/`, git-ignored); tests use `Storage::fake('local')`.
 - **Business parameters** (minimum grade, minimum attendance, required documents, upload limits, PagoFácil) live in `config/icap.php`.
 
 ### RBAC — the access matrix
@@ -90,14 +92,14 @@ Everything uses `IF NOT EXISTS` so it can run on top of an existing database; mi
 
 ### Payments (PagoFácil)
 
-`app/Services/PasarelaPagoService.php` implements login → generate QR → client polling every 5 s → webhook (`POST /api/pagos/pasarela/callback`, authenticated by `PAGO_FACIL_WEBHOOK_SECRET`, idempotent). Default mode is **simulated**: the QR points to the SPA page `/pasarela-simulada/:numero`, which fires the same webhook. Real credentials are stored per payment method in the `pasarela_pago` table (set from the UI), not in `.env`. Real mode has not been tested.
+`app/Services/PagoFacilService.php` implements login → generate QR → client polling every 5 s → webhook (`POST /api/pagos/pasarela/callback`, authenticated by `PAGO_FACIL_WEBHOOK_SECRET`, idempotent). Credentials are stored per payment method in the `metodo_pago_electronico` table (set from the UI, as in the reference project), not in `.env`. There is no simulated mode: tests fake the PagoFácil API with `Http::fake`.
 
 Confirming a payment cascades: trigger marks the instalment paid → `MatriculaService` activates the enrolment if it was the initial payment and enrols the student in modules → the receipt is archived in the document repository.
 
 ## Frontend architecture
 
 - `src/api/cliente.js` is the single Axios instance. It attaches `Authorization: Bearer` and `X-Rol-Activo` from `localStorage`, handles session expiry on 401, and exports helpers `mensajeError`, `erroresDeValidacion` (maps 422 `errors` to fields), `aFormData`, `abrirArchivo` (authenticated blob download).
-- `src/routes/rutas.js` maps every page to its required permission (lazy-loaded). It only guards manual navigation; the **menu comes from the API**, not from this file.
+- `src/routes/rutas.js` maps every page to its required permission (lazy-loaded); `Guardia` in `src/App.jsx` enforces it (flags: `publica`, `invitado`, `permiso`). It only guards manual navigation; the **menu comes from the API**, not from this file. A new page is added by appending an entry here — `App.jsx` needs no change.
 - `src/context/` — `AuthContext` (session, active role, `auth.puede(permiso)`), `PreferenciasContext` (3 themes, day/night, high contrast), `AvisosContext` (toasts).
 - `src/hooks/` — `useConsulta` (GET with params), `useFormulario` (client validation + server 422 errors), `useVisitas`.
 - `src/components/ui/CrudSimple.jsx` is a generic list/search/create/edit/delete screen driven by props; simple catalogue pages (programs, modules, scholarships, fees) are just a `CrudSimple` configuration. Prefer it over hand-rolling a new CRUD page.

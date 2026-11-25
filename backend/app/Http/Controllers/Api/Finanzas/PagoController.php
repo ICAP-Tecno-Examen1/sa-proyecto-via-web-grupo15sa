@@ -12,7 +12,7 @@ use App\Services\Auditoria;
 use App\Services\DocumentoService;
 use App\Services\MatriculaService;
 use App\Services\PagoService;
-use App\Services\PasarelaPagoService;
+use App\Services\PagoFacilService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -28,7 +28,7 @@ class PagoController extends Controller
 
     public function __construct(
         private readonly PagoService $pagos,
-        private readonly PasarelaPagoService $pasarela,
+        private readonly PagoFacilService $pagofacil,
         private readonly MatriculaService $matriculas,
     ) {}
 
@@ -96,7 +96,7 @@ class PagoController extends Controller
         ]);
 
         $cuota = $this->cuotaAutorizada($request->user(), (int) $datos['id_mensualidad']);
-        $resultado = $this->pasarela->iniciar($cuota, $datos['pagador'], $datos['parentesco_pagador'] ?? null, $request->user());
+        $resultado = $this->pagofacil->iniciar($cuota, $datos['pagador'], $datos['parentesco_pagador'] ?? null, $request->user());
 
         Auditoria::describir("Generó un QR de pago para la matrícula {$cuota->matricula->numero_registro}");
 
@@ -107,7 +107,7 @@ class PagoController extends Controller
     public function estado(Request $request, Pago $pago): JsonResponse
     {
         $this->autorizarLectura($request->user(), $pago);
-        $pago = $this->pasarela->consultarEstado($pago);
+        $pago = $this->pagofacil->consultarEstado($pago);
 
         return response()->json([
             'id_pago' => $pago->id_pago,

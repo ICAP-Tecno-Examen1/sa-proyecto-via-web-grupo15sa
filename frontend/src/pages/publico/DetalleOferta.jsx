@@ -14,6 +14,39 @@ import { useFormulario } from '../../hooks/useFormulario'
 import { describirPlan, fecha, legible, moneda } from '../../utils/formato'
 import { maximo, requerido } from '../../utils/validacion'
 
+/** Malla de una carrera: módulos numerados, cada uno con sus 1 o 2 materias. */
+function PlanPorModulos({ modulos }) {
+  const bloques = []
+  modulos.forEach((m) => {
+    const clave = m.bloque?.id_modulo_carrera ?? `suelta-${m.id_oferta_modulo}`
+    let bloque = bloques.find((b) => b.clave === clave)
+    if (!bloque) bloques.push((bloque = { clave, nombre: m.bloque?.nombre ?? m.nombre, orden: m.bloque?.orden, materias: [] }))
+    bloque.materias.push(m)
+  })
+  bloques.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+
+  return (
+    <Tarjeta titulo={`Malla curricular · ${bloques.length} módulos, ${modulos.length} materias`}>
+      <ol className="relative space-y-4 border-l-4 border-dashed border-borde pl-6">
+        {bloques.map((b, i) => (
+          <li key={b.clave} className="relative">
+            <span className="absolute top-0 -left-[2.4rem] grid size-8 place-items-center rounded-full bg-primario text-sm font-bold text-sobre-primario">{i + 1}</span>
+            <p className="font-extrabold">{b.nombre}</p>
+            <ul className="mt-2 space-y-1.5">
+              {b.materias.map((m) => (
+                <li key={m.id_oferta_modulo} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-suave px-3 py-2 text-sm">
+                  <span className="font-semibold">{m.nombre}</span>
+                  <span className="text-xs text-tenue">{m.horas} h · {m.docentes.join(', ') || 'Docente por designar'}</span>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    </Tarjeta>
+  )
+}
+
 /** CU2/CU3 · Detalle de una oferta y preinscripción desde la web. */
 export default function DetalleOferta() {
   const { id } = useParams()
@@ -59,6 +92,7 @@ export default function DetalleOferta() {
                 </dl>
               </section>
 
+              {o.modulos.some((m) => m.bloque) ? <PlanPorModulos modulos={o.modulos} /> : (
               <Tarjeta titulo="Módulos del programa" relleno={false}>
                 <Tabla
                   id="id_oferta_modulo"
@@ -71,6 +105,7 @@ export default function DetalleOferta() {
                   ]}
                 />
               </Tarjeta>
+              )}
             </div>
 
             <aside className="space-y-5">

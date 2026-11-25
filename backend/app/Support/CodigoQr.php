@@ -8,7 +8,7 @@ use Endroid\QrCode\Writer\PngWriter;
 
 /**
  * Genera códigos QR como imagen PNG embebible (data URI).
- * Se usa en los certificados digitales y en la pasarela simulada.
+ * Se usa en los certificados digitales.
  */
 class CodigoQr
 {

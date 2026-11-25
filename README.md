@@ -14,35 +14,101 @@ Examen2/
 └── iniciar.bat          Arranca todo con doble clic
 ```
 
-## Puesta en marcha (una sola vez)
+## Puesta en marcha
 
-Requisitos: PHP 8.2+ con `pdo_pgsql`, Composer, Node.js 20.19+ / 22.12+ y Docker Desktop (o cualquier PostgreSQL).
+Hay dos formas de conectar la API a la base de datos. Elija una:
+
+| Modo | Base de datos | Cuándo usarlo |
+|---|---|---|
+| **A · Compartida** | `www.tecnoweb.org.bo` · `db_grupo15sa` (la que entregó el ingeniero) | Trabajo del grupo con los datos reales |
+| **B · Local** | Docker, `localhost:5433` · `db_icap` | Pruebas sin tocar la base del grupo |
+
+### ⚠️ Antes de tocar la base compartida
+
+- **Nunca** ejecute `migrate:fresh` ni `db:wipe`: borran todas las tablas del grupo.
+- La base compartida ya tiene tablas (el grupo indicó 29). Antes de migrar, revise con `php artisan db:show` si alguna se llama igual que una tabla de ICAP (`usuario`, `matricula`, `pago`…). Las migraciones usan `IF NOT EXISTS`: si una tabla existe con otras columnas, el sistema fallará o alterará datos del grupo. Acuerden con el equipo antes de migrar.
+- **No ejecute `migrate --seed` en la base compartida** sin acuerdo: el seeder crea cuentas de prueba (contraseña `Icap2026*`) dentro de la base del grupo.
+- Si ve `could not translate host name "www.tecnoweb.org.bo"`, el equipo no resuelve el dominio: conéctese desde la red de la universidad o revise su internet o VPN. Pruebe con `nslookup www.tecnoweb.org.bo`.
+
+### Modo A · Base compartida
+
+**Desde la terminal (PowerShell):**
 
 ```powershell
-# 1. Base de datos local  ->  localhost:5433 · db_icap · icap / icap_local
-docker compose up -d
+# 1. Credenciales: backend\.env ya tiene DB_HOST=www.tecnoweb.org.bo, DB_DATABASE=db_grupo15sa,
+#    DB_USERNAME=grupo15sa y la contraseña del grupo. Si no, cópielas desde backend\.env.example.
 
-# 2. API
 cd backend
 composer install
-copy .env.example .env
-php artisan key:generate
-php artisan migrate --seed                  # tablas, triggers, roles, permisos, menú y cuentas
-php artisan db:seed --class=DemoSeeder      # opcional: datos de demostración
+php artisan key:generate        # solo la primera vez (si APP_KEY está vacío)
 
-# 3. Cliente
+# 2. Comprobar la conexión y ver las tablas que ya existen
+php artisan db:show
+
+# 3. Solo si el grupo acordó crear las tablas de ICAP:
+php artisan migrate
+
+# 4. Servir la API
+php artisan serve               # http://127.0.0.1:8000/api
+```
+
+**Con Docker:**
+
+```powershell
+# En la raíz de Examen2:
+copy .env.example .env
+notepad .env                    # completar ICAP_DB_DATABASE, ICAP_DB_USERNAME e ICAP_DB_PASSWORD
+#   (ICAP_MIGRAR y ICAP_SEMBRAR quedan en false: Docker no modifica la base del grupo al arrancar)
+
+docker compose --profile app up -d --build
+docker compose exec backend php artisan db:show       # comprobar la conexión
+docker compose exec backend php artisan migrate       # solo si el grupo lo acordó
+```
+
+Para detener: `docker compose --profile app down`. Los datos del contenedor local se conservan; la base del grupo no se toca.
+
+### Modo B · Base local
+
+**Desde la terminal:**
+
+```powershell
+# 1. Solo la base de datos local (Docker)
+docker compose up -d                    # PostgreSQL en localhost:5433 · db_icap · icap / icap_local
+
+# 2. API: en backend\.env deben estar estos valores
+#    DB_HOST=127.0.0.1  DB_PORT=5433  DB_DATABASE=db_icap  DB_USERNAME=icap  DB_PASSWORD=icap_local
+cd backend
+composer install
+php artisan key:generate
+php artisan migrate --seed              # tablas, triggers, roles, permisos, menú y cuentas
+php artisan db:seed --class=DemoSeeder  # opcional: datos de demostración
+php artisan serve
+
+# 3. Cliente (otra terminal)
 cd ..\frontend
 npm install
 copy .env.example .env
+npm run dev                             # http://localhost:5173
 ```
 
-Después, cada día: doble clic a **`iniciar.bat`** y abrir <http://localhost:5173>.
+**Con Docker (todo en contenedores):**
 
-> Si `npm run dev` falla con *Cannot find module '@rolldown/binding-win32-x64-msvc'*, es un fallo conocido de npm con dependencias opcionales: borre `frontend/node_modules` y `frontend/package-lock.json` y ejecute `npm install` de nuevo.
+```powershell
+# Sin archivo .env en la raíz: Docker usa la base local y migra y siembra solo.
+docker compose --profile app up -d --build
+```
+
+Abra <http://localhost:5173> (cliente) y <http://localhost:8000/api/publico/catalogo> (API).
+
+### Arranque diario con doble clic
+
+Con el modo B ya configurado, **`iniciar.bat`** levanta la base local, la API y el cliente, y abre el navegador. Para el modo A use la terminal o Docker, como arriba.
+
+> Si `npm run dev` falla con *Cannot find module '@rolldown/binding-win32-x64-msvc'*, es un fallo conocido de npm con dependencias opcionales: borre `frontend\node_modules` y `frontend\package-lock.json` y ejecute `npm install` de nuevo.
 
 ## Cuentas iniciales
 
-Contraseña de todas: **`Icap2026*`**
+Contraseña de todas: **`Icap2026*`**. Con la base compartida, estas cuentas existen solo si el grupo ya ejecutó el seeder: confírmenlo antes de iniciar sesión.
 
 | Usuario | Rol | Qué demuestra |
 |---|---|---|
@@ -74,11 +140,10 @@ Contraseña de todas: **`Icap2026*`**
 
 Mismo flujo que el proyecto de referencia del grupo (`login` → `generate-qr` → sondeo cada 5 s → webhook con `Estado = 2`), implementado en [backend/app/Services/PasarelaPagoService.php](backend/app/Services/PasarelaPagoService.php).
 
-- **Modo simulado** (por defecto): el QR abre una pasarela de demostración del propio sistema que dispara el mismo webhook. Permite defender el flujo completo sin credenciales ni dinero real.
-- **Modo real**: en *Finanzas › Métodos de pago › QR PagoFácil* cargue `tcTokenService` y `tcTokenSecret` y elija «Real». La URL de callback debe ser pública: `https://…/backend/public/api/pagos/pasarela/callback`.
+- Para activarlo, en *Finanzas › Métodos de pago › PagoFácil (QR)* cargue `tcTokenService` y `tcTokenSecret` y deje el método activo. La URL de callback debe ser pública: `https://…/backend/public/api/pagos/pasarela/callback`.
 - El webhook exige el secreto `PAGO_FACIL_WEBHOOK_SECRET` (se anexa solo a la URL de callback) y es idempotente.
 
-El modo real no pudo probarse aquí porque requiere las credenciales del comercio; conviene hacer un pago de prueba antes de la defensa.
+Las pruebas automáticas simulan la API de PagoFácil; la integración real todavía no se ha probado con credenciales.
 
 ## Pruebas
 

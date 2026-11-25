@@ -4,43 +4,39 @@ namespace App\Http\Controllers\Api\Finanzas;
 
 use App\Http\Controllers\Controller;
 use App\Models\MetodoPago;
-use App\Models\PasarelaPago;
+use App\Models\MetodoPagoElectronico;
 use App\Services\Auditoria;
-use App\Services\PasarelaPagoService;
+use App\Services\PagoFacilService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * CU4 · Métodos de pago y configuración de la pasarela PagoFácil (requisito 10).
- *
- * Igual que en el proyecto de referencia, las credenciales de PagoFácil
- * (tcTokenService / tcTokenSecret) se administran desde aquí y se guardan en
- * la base de datos; nunca se devuelven completas al cliente.
+ * CU4 · Métodos de pago y credenciales de PagoFácil (requisito 10), como en el proyecto de referencia.
+ * Las credenciales (tcTokenService / tcTokenSecret) se guardan en metodo_pago_electronico y nunca
+ * se devuelven al cliente. Solo un método electrónico queda activo a la vez.
  */
 class MetodoPagoController extends Controller
 {
-    /** Métodos habilitados, para los formularios de pago. */
+    /** Métodos habilitados para pagar (PagoFácil solo si tiene credenciales activas). */
     public function disponibles(Request $request): JsonResponse
     {
         $puedeEfectivo = $request->user()->tienePermiso('pagos.registrar');
 
         return response()->json(
-            MetodoPago::where('activo', true)->with('pasarela')->orderBy('id_metodo_pago')->get()
+            MetodoPago::where('activo', true)->with('electronico')->orderBy('id_metodo_pago')->get()
                 ->filter(fn (MetodoPago $m) => $m->tipo !== MetodoPago::EFECTIVO || $puedeEfectivo)
-                ->filter(fn (MetodoPago $m) => $m->tipo !== MetodoPago::PASARELA || $m->pasarela?->activo)
-                ->map(fn (MetodoPago $m) => [
-                    ...$m->only(['id_metodo_pago', 'nombre', 'descripcion', 'tipo']),
-                    'modo_pasarela' => $m->tipo === MetodoPago::PASARELA ? ($m->pasarela->esReal() ? PasarelaPago::REAL : PasarelaPago::SIMULADO) : null,
-                ])->values()
+                ->filter(fn (MetodoPago $m) => $m->tipo !== MetodoPago::PASARELA || ($m->electronico?->activo && $m->electronico->tieneCredenciales()))
+                ->map(fn (MetodoPago $m) => $m->only(['id_metodo_pago', 'nombre', 'descripcion', 'tipo']))
+                ->values()
         );
     }
 
     public function index(): JsonResponse
     {
         return response()->json(
-            MetodoPago::with('pasarela')->withCount('pagos')->orderBy('id_metodo_pago')->get()
+            MetodoPago::with('electronico')->withCount('pagos')->orderBy('id_metodo_pago')->get()
                 ->map(fn (MetodoPago $m) => $this->formato($m))
         );
     }
@@ -51,14 +47,14 @@ class MetodoPagoController extends Controller
 
         $metodo = DB::transaction(function () use ($datos) {
             $metodo = MetodoPago::create($this->datosMetodo($datos));
-            $this->guardarPasarela($metodo, $datos);
+            $this->guardarElectronico($metodo, $datos);
 
             return $metodo;
         });
 
         Auditoria::describir("Registró el método de pago «{$metodo->nombre}»");
 
-        return response()->json($this->formato($metodo->load('pasarela')->loadCount('pagos')), 201);
+        return response()->json($this->formato($metodo->load('electronico')->loadCount('pagos')), 201);
     }
 
     public function update(Request $request, MetodoPago $metodoPago): JsonResponse
@@ -73,12 +69,12 @@ class MetodoPagoController extends Controller
 
         DB::transaction(function () use ($metodoPago, $datos) {
             $metodoPago->update($this->datosMetodo($datos));
-            $this->guardarPasarela($metodoPago, $datos);
+            $this->guardarElectronico($metodoPago, $datos);
         });
 
         Auditoria::describir("Actualizó el método de pago «{$metodoPago->nombre}»");
 
-        return response()->json($this->formato($metodoPago->refresh()->load('pasarela')->loadCount('pagos')));
+        return response()->json($this->formato($metodoPago->refresh()->load('electronico')->loadCount('pagos')));
     }
 
     public function cambiarEstado(MetodoPago $metodoPago): JsonResponse
@@ -86,13 +82,14 @@ class MetodoPagoController extends Controller
         $metodoPago->update(['activo' => ! $metodoPago->activo]);
         Auditoria::describir(($metodoPago->activo ? 'Activó' : 'Desactivó')." el método de pago «{$metodoPago->nombre}»");
 
-        return response()->json($this->formato($metodoPago->load('pasarela')->loadCount('pagos')));
+        return response()->json($this->formato($metodoPago->load('electronico')->loadCount('pagos')));
     }
 
     public function destroy(MetodoPago $metodoPago): JsonResponse
     {
         abort_if($metodoPago->pagos()->exists(), 422, 'No se puede eliminar: el método tiene pagos asociados. Puede desactivarlo.');
 
+        $metodoPago->electronico()->delete();
         $metodoPago->delete();
         Auditoria::describir("Eliminó el método de pago «{$metodoPago->nombre}»");
 
@@ -109,8 +106,7 @@ class MetodoPagoController extends Controller
             'descripcion' => ['nullable', 'string', 'max:1000'],
             'tipo' => ['required', Rule::in(MetodoPago::TIPOS)],
             'activo' => ['required', 'boolean'],
-            // Solo para el tipo PASARELA
-            'modo' => ['required_if:tipo,'.MetodoPago::PASARELA, 'nullable', Rule::in([PasarelaPago::SIMULADO, PasarelaPago::REAL])],
+            // Solo para el tipo PASARELA (PagoFácil)
             'tc_token_service' => ['nullable', 'string', 'max:2000'],
             'tc_token_secret' => ['nullable', 'string', 'max:2000'],
             'callback_url' => ['nullable', 'url', 'max:500'],
@@ -122,53 +118,44 @@ class MetodoPagoController extends Controller
         return array_intersect_key($datos, array_flip(['nombre', 'descripcion', 'tipo', 'activo']));
     }
 
-    /** Crea, actualiza o elimina la configuración de pasarela según el tipo del método. */
-    private function guardarPasarela(MetodoPago $metodo, array $datos): void
+    /** Crea, actualiza o elimina las credenciales de PagoFácil según el tipo del método. */
+    private function guardarElectronico(MetodoPago $metodo, array $datos): void
     {
         if ($metodo->tipo !== MetodoPago::PASARELA) {
-            $metodo->pasarela()->delete();
+            $metodo->electronico()->delete();
 
             return;
         }
 
-        $pasarela = $metodo->pasarela ?? new PasarelaPago(['id_metodo_pago' => $metodo->id_metodo_pago, 'proveedor' => 'PAGOFACIL']);
-        $pasarela->modo = $datos['modo'] ?? PasarelaPago::SIMULADO;
-        $pasarela->callback_url = $datos['callback_url'] ?? null;
-        $pasarela->activo = true;
+        $electronico = MetodoPagoElectronico::firstOrNew(['id_metodo_pago' => $metodo->id_metodo_pago]);
+        $electronico->callback_url = $datos['callback_url'] ?? null;
 
-        // Las credenciales solo se reemplazan cuando el usuario escribe un valor nuevo.
+        // Las credenciales solo se reemplazan cuando se escribe un valor nuevo.
         foreach (['tc_token_service', 'tc_token_secret'] as $campo) {
             if (filled($datos[$campo] ?? null)) {
-                $pasarela->{$campo} = $datos[$campo];
+                PagoFacilService::olvidarToken($electronico->getOriginal($campo));
+                $electronico->{$campo} = $datos[$campo];
             }
         }
 
-        abort_if(
-            $pasarela->modo === PasarelaPago::REAL && ! $pasarela->tieneCredenciales(),
-            422,
-            'Para usar el modo REAL debe cargar el Token Service y el Token Secret de PagoFácil.'
-        );
+        // Sin credenciales el método queda guardado pero no activo: no se ofrece al pagar.
+        $electronico->activo = $electronico->tieneCredenciales();
+        $electronico->save();
 
-        // Si cambian las credenciales, el token de acceso guardado deja de servir.
-        PasarelaPagoService::olvidarToken($pasarela->getOriginal('tc_token_service'));
-        PasarelaPagoService::olvidarToken($pasarela->tc_token_service);
-        $pasarela->save();
-
-        // Solo una pasarela activa a la vez: es la que usa el servicio de pagos por QR.
-        PasarelaPago::where('id_pasarela', '<>', $pasarela->id_pasarela)->update(['activo' => false]);
+        // Solo un método electrónico activo a la vez: es el que usa el servicio de PagoFácil.
+        if ($electronico->activo) {
+            MetodoPagoElectronico::where('id_metodo_pago', '<>', $electronico->id_metodo_pago)->update(['activo' => false]);
+        }
     }
 
     private function formato(MetodoPago $m): array
     {
         return [
             ...$m->only(['id_metodo_pago', 'nombre', 'descripcion', 'tipo', 'activo', 'pagos_count']),
-            'pasarela' => $m->pasarela ? [
-                'proveedor' => $m->pasarela->proveedor,
-                'modo' => $m->pasarela->modo,
-                'modo_efectivo' => $m->pasarela->esReal() ? PasarelaPago::REAL : PasarelaPago::SIMULADO,
-                'callback_url' => $m->pasarela->callback_url,
-                'activo' => $m->pasarela->activo,
-                'tiene_credenciales' => $m->pasarela->tieneCredenciales(),
+            'electronico' => $m->electronico ? [
+                'callback_url' => $m->electronico->callback_url,
+                'activo' => $m->electronico->activo,
+                'tiene_credenciales' => $m->electronico->tieneCredenciales(),
             ] : null,
         ];
     }

@@ -6,7 +6,7 @@ export default function Modulos() {
   return (
     <CrudSimple
       titulo="Módulos"
-      descripcion="Materias que componen los programas. Un mismo módulo puede formar parte de varias mallas."
+      descripcion="Materias que componen los programas: cada una tiene su carga horaria y se califica por separado. En una carrera, la malla curricular las agrupa en módulos de 1 o 2 materias."
       singular="módulo"
       recurso="/modulos"
       id="id_modulo"
