@@ -45,7 +45,7 @@ export default function MisPagos() {
                     )}
                   </div>
 
-                  {m.estado === 'PENDIENTE_PAGO' && <Alerta tipo="alerta" className="mb-4">Realice el pago inicial (cuota 1) para activar su matrícula y quedar inscrito en sus módulos.</Alerta>}
+                  {m.estado === 'PENDIENTE_PAGO' && <Alerta tipo="alerta" className="mb-4">Realice el pago inicial (cuota 1) para activar su matrícula y quedar inscrito en sus materias.</Alerta>}
                   {m.cuenta.resumen.monto_en_revision > 0 && <Alerta className="mb-4">Tiene {moneda(m.cuenta.resumen.monto_en_revision)} en revisión. El Coordinador Financiero confirmará su pago.</Alerta>}
                   {m.cuenta.resumen.saldo_pendiente === 0 && <Alerta tipo="exito" className="mb-4">No tiene deudas en este programa.</Alerta>}
 

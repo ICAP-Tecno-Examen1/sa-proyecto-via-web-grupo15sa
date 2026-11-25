@@ -27,13 +27,36 @@ export const reglasOferta = {
   gestion: [requerido(), entero(), entre(2000, 2100)],
 }
 
-export function CamposOferta({ f }) {
+/*
+ * Carreras: cada módulo dura MESES_POR_MODULO y sus materias se dictan a la vez.
+ * Debe coincidir con ICAP_MESES_POR_MODULO del backend (config/icap.php), que es
+ * quien genera el calendario definitivo al crear la oferta.
+ */
+const MESES_POR_MODULO = 1
+
+/** Fecha de fin de una carrera: inicio + (módulos × meses) − 1 día. Formato AAAA-MM-DD. */
+function finDeCarrera(inicio, cantidadModulos) {
+  if (!inicio || !cantidadModulos) return null
+  const [anio, mes, dia] = inicio.split('-').map(Number)
+  const total = mes - 1 + cantidadModulos * MESES_POR_MODULO
+  const anioFin = anio + Math.floor(total / 12)
+  const mesFin = total % 12
+  const ultimoDia = new Date(Date.UTC(anioFin, mesFin + 1, 0)).getUTCDate()
+  const fin = new Date(Date.UTC(anioFin, mesFin, Math.min(dia, ultimoDia) - 1))
+
+  return fin.toISOString().slice(0, 10)
+}
+
+export function CamposOferta({ f, finCalculado, modulosCarrera }) {
   return (
     <>
       <Campo {...f.campo('codigo')} etiqueta="Código de la oferta" requerido ayuda="Ejemplo: OFI-2026-A" />
       <Campo {...f.campo('modalidad')} tipo="select" etiqueta="Modalidad" opciones={MODALIDADES} requerido />
       <Campo {...f.campo('fecha_inicio')} tipo="date" etiqueta="Fecha de inicio" requerido />
-      <Campo {...f.campo('fecha_fin')} tipo="date" etiqueta="Fecha de finalización" requerido />
+      {modulosCarrera
+        ? <Campo nombre="fecha_fin" tipo="date" etiqueta="Fecha de finalización" valor={finCalculado ?? ''} alCambiar={() => {}} disabled
+            ayuda={`Se calcula sola: ${modulosCarrera} módulos × ${MESES_POR_MODULO} mes. Cada módulo se dicta en su mes, con sus materias a la vez.`} />
+        : <Campo {...f.campo('fecha_fin')} tipo="date" etiqueta="Fecha de finalización" requerido />}
       <Campo {...f.campo('cupo_minimo')} tipo="number" min={0} etiqueta="Cupo mínimo" requerido />
       <Campo {...f.campo('cupo_maximo')} tipo="number" min={1} etiqueta="Cupo máximo" requerido />
       <Campo {...f.campo('gestion')} tipo="number" etiqueta="Gestión" requerido />
@@ -53,13 +76,23 @@ export default function Ofertas() {
   const [creando, setCreando] = useState(false)
   const mallas = useConsulta(creando ? '/mallas' : null, { estado: 'ACTIVO' })
 
+  // Si la malla elegida es de una carrera (con módulos), la fecha de fin se calcula sola.
+  const modulosDe = (idMalla) => mallas.datos?.find((m) => String(m.id_malla) === String(idMalla))?.bloques?.length ?? 0
+
   const f = useFormulario(
     { id_malla: '', codigo: '', modalidad: '', fecha_inicio: '', fecha_fin: '', cupo_minimo: 5, cupo_maximo: 25, gestion: new Date().getFullYear() },
-    { id_malla: [requerido('Seleccione la malla curricular que se dictará.')], ...reglasOferta },
+    {
+      id_malla: [requerido('Seleccione la malla curricular que se dictará.')],
+      ...reglasOferta,
+      fecha_fin: reglasOferta.fecha_fin.map((regla) => (v, todos) => (modulosDe(todos.id_malla) ? null : regla(v, todos))),
+    },
   )
+  const modulosCarrera = modulosDe(f.valores.id_malla)
+  const finCalculado = finDeCarrera(f.valores.fecha_inicio, modulosCarrera)
 
   const crear = f.enviar(async (valores) => {
-    const { data } = await api.post('/ofertas', { ...cuerpoOferta(valores), id_malla: Number(valores.id_malla) })
+    const fechaFin = modulosCarrera ? finCalculado : valores.fecha_fin
+    const { data } = await api.post('/ofertas', { ...cuerpoOferta(valores), fecha_fin: fechaFin, id_malla: Number(valores.id_malla) })
     avisar.exito('Oferta creada en estado «Planificada». Asigne docentes y solicite la configuración de costos.')
     navegar(`/ofertas/${data.id_oferta}`)
   })
@@ -105,9 +138,12 @@ export default function Ofertas() {
         <form onSubmit={crear} noValidate className="grid gap-4 sm:grid-cols-2">
           {f.errorGeneral && <Alerta tipo="peligro" className="sm:col-span-2">{f.errorGeneral}</Alerta>}
           <Campo {...f.campo('id_malla')} tipo="select" etiqueta="Programa y versión de malla" requerido className="sm:col-span-2"
-            ayuda="La oferta heredará todos los módulos de esta malla."
-            opciones={(mallas.datos ?? []).map((m) => ({ valor: m.id_malla, etiqueta: `${m.programa.nombre} — versión ${m.version} (${m.malla_modulos.length} módulos, ${m.horas_totales} h)` }))} />
-          <CamposOferta f={f} />
+            ayuda={modulosCarrera ? 'Carrera por módulos: un módulo por mes; las materias de un mismo módulo se dictan ese mes.' : 'La oferta heredará todas las materias de esta malla.'}
+            opciones={(mallas.datos ?? []).map((m) => ({
+              valor: m.id_malla,
+              etiqueta: `${m.programa.nombre} — versión ${m.version} (${m.bloques?.length ? `${m.bloques.length} módulos · ${m.malla_modulos.length} materias` : `${m.malla_modulos.length} materias`}, ${m.horas_totales} h)`,
+            }))} />
+          <CamposOferta f={f} finCalculado={finCalculado} modulosCarrera={modulosCarrera} />
         </form>
       </Modal>
     </>

@@ -82,6 +82,7 @@ composer install
 php artisan key:generate
 php artisan migrate --seed              # tablas, triggers, roles, permisos, menú y cuentas
 php artisan db:seed --class=DemoSeeder  # opcional: datos de demostración
+php artisan db:seed --class=CatalogoEjemploSeeder  # opcional: carreras, curso, taller y programa técnico publicados (catálogo)
 php artisan serve
 
 # 3. Cliente (otra terminal)

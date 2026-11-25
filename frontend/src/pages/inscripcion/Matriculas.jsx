@@ -20,7 +20,7 @@ export default function Matriculas() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Matrículas" descripcion="Seguimiento de cada estudiante: estado de la matrícula, pagos, módulos inscritos y avance académico." />
+      <EncabezadoPagina titulo="Matrículas" descripcion="Seguimiento de cada estudiante: estado de la matrícula, pagos, materias inscritas y avance académico." />
 
       <Tarjeta relleno={false}>
         <div className="flex flex-wrap items-end gap-3 border-b p-3">

@@ -36,7 +36,7 @@ class MenuSeeder extends Seeder
         ]],
         'Oferta académica' => ['libro', [
             ['Programas', '/programas', 'libro', 'programas.ver'],
-            ['Módulos', '/modulos', 'modulo', 'programas.ver'],
+            ['Materias', '/modulos', 'modulo', 'programas.ver'],
             ['Mallas curriculares', '/mallas', 'malla', 'programas.ver'],
             ['Ofertas académicas', '/ofertas', 'calendario', 'ofertas.ver'],
         ]],
@@ -51,7 +51,7 @@ class MenuSeeder extends Seeder
             ['Pagos y conciliación', '/pagos', 'pago', 'pagos.ver'],
         ]],
         'Académico' => ['docente', [
-            ['Módulos y calificaciones', '/docencia', 'docente', 'docencia.ver'],
+            ['Materias y calificaciones', '/docencia', 'docente', 'docencia.ver'],
             ['Correcciones de nota', '/correcciones', 'correccion', 'correcciones.ver'],
         ]],
         'Certificación' => ['certificado', [

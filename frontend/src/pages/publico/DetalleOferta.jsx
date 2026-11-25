@@ -93,13 +93,13 @@ export default function DetalleOferta() {
               </section>
 
               {o.modulos.some((m) => m.bloque) ? <PlanPorModulos modulos={o.modulos} /> : (
-              <Tarjeta titulo="Módulos del programa" relleno={false}>
+              <Tarjeta titulo="Materias del programa" relleno={false}>
                 <Tabla
                   id="id_oferta_modulo"
                   filas={o.modulos}
                   columnas={[
                     { clave: 'orden', titulo: 'N.º', alinear: 'centro' },
-                    { clave: 'nombre', titulo: 'Módulo', render: (m) => (<><span className="font-semibold">{m.nombre}</span>{!m.obligatorio && <span className="ml-2 text-xs text-tenue">(optativo)</span>}</>) },
+                    { clave: 'nombre', titulo: 'Materia', render: (m) => (<><span className="font-semibold">{m.nombre}</span>{!m.obligatorio && <span className="ml-2 text-xs text-tenue">(optativo)</span>}</>) },
                     { clave: 'horas', titulo: 'Horas', alinear: 'derecha' },
                     { clave: 'docentes', titulo: 'Docente', render: (m) => m.docentes.join(', ') || 'Por designar' },
                   ]}

@@ -46,7 +46,7 @@ export default function MisEstudios() {
                   </p>
 
                   {detalle.datos.estado === 'PENDIENTE_PAGO' && (
-                    <Alerta tipo="alerta" className="mb-4">Su matrícula está pendiente de pago. Al confirmarse el pago inicial quedará inscrito en sus módulos. <Boton a="/mis-pagos" tamano="sm" className="mt-2">Pagar ahora</Boton></Alerta>
+                    <Alerta tipo="alerta" className="mb-4">Su matrícula está pendiente de pago. Al confirmarse el pago inicial quedará inscrito en sus materias. <Boton a="/mis-pagos" tamano="sm" className="mt-2">Pagar ahora</Boton></Alerta>
                   )}
                   {detalle.datos.estado === 'FINALIZADA' && !detalle.datos.certificado && (
                     <Alerta className="mb-4">Finalizó su programa. El ICAP está validando sus requisitos académicos, financieros y documentales para emitir su certificado.</Alerta>

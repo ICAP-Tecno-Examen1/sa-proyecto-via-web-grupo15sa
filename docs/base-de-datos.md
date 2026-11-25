@@ -69,10 +69,12 @@ Son los «pequeños ajustes» previstos para conciliación, requisitos y reposit
 
 ## Niveles de programa
 
-`programa.tipo` admite `CURSO`, `TALLER`, `SEMINARIO`, `DIPLOMADO`, `TECNICO_MEDIO`, `TECNICO_SUPERIOR` y `PROGRAMA_TECNICO` (este último se conserva por compatibilidad).
+`programa.tipo` admite `CURSO`, `TALLER`, `TECNICO_AUXILIAR`, `TECNICO_MEDIO`, `TECNICO_SUPERIOR` y `PROGRAMA_TECNICO` (este último se conserva por compatibilidad).
 
 ## Materias y módulos de la carrera
 
 - `modulo` es la **materia**: se califica, tiene asistencia y evaluaciones propias.
 - `modulo_carrera` es el **módulo de la carrera** dentro de una malla: agrupa 1 o 2 materias (`malla_modulo.id_modulo_carrera`). La API rechaza grupos con 0 o más de 2 materias.
+- **Calendario de una carrera (regla provisional):** un módulo = un mes (`ICAP_MESES_POR_MODULO`, por defecto 1). Al crear la oferta, el módulo N recibe el mes N desde `fecha_inicio` y sus 1 o 2 materias comparten ese periodo en `oferta_modulo.fecha_inicio/fecha_fin`; la `fecha_fin` de la oferta es el fin del último módulo. Después, cada materia puede ajustarse a mano (`PUT /api/ofertas-modulo/{id}`), así que una materia puede durar más de un mes si el ICAP lo requiere. `modulo_carrera` no tiene fechas propias: su periodo se deduce de sus materias.
 - Ejemplo cargado con `php artisan db:seed --class=CarreraEjemploSeeder --force`: Auxiliar Contable (técnico medio), con 4 módulos y 5 materias.
+- Catálogo de ejemplo con `php artisan db:seed --class=CatalogoEjemploSeeder`: tres carreras técnicas (auxiliar, medio y superior), un curso, un taller y un programa técnico (códigos `EJ-…`), con malla, oferta **abierta**, planes de pago y docentes. Las tres carreras técnicas usan módulos de 1 o 2 materias. Es idempotente.

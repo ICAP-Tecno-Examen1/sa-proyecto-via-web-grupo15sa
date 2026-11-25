@@ -22,7 +22,7 @@ export default function TarjetaOferta({ oferta }) {
         <span className="flex items-center gap-1"><CalendarDays className="size-3.5" aria-hidden /> {fecha(oferta.fecha_inicio)}</span>
         <span className="flex items-center gap-1"><Users className="size-3.5" aria-hidden /> {oferta.malla.cantidad_bloques
           ? `${oferta.malla.cantidad_bloques} módulos · ${oferta.malla.cantidad_modulos} materias`
-          : `${oferta.malla.cantidad_modulos} módulos`}</span>
+          : `${oferta.malla.cantidad_modulos} ${oferta.malla.cantidad_modulos === 1 ? 'materia' : 'materias'}`}</span>
       </p>
 
       <div className="mt-4 flex items-center justify-between border-t border-borde pt-3">

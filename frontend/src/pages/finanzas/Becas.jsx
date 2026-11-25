@@ -18,6 +18,7 @@ export default function Becas() {
           titulo="Becas y descuentos"
           descripcion="Catálogo de becas. La asignación a un estudiante se hace desde la ficha de su matrícula y recalcula sus cuotas pendientes."
           singular="beca"
+      femenino
           recurso="/becas"
           id="id_beca"
           buscar={false}

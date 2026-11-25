@@ -99,6 +99,7 @@ class MallaController extends Controller
 
     private function detalle(MallaCurricular $malla): MallaCurricular
     {
-        return $malla->refresh()->load(self::RELACIONES)->loadCount('ofertas');
+        // Sin refresh(): el modelo ya tiene sus datos y cada consulta cuenta si la BD está lejos.
+        return $malla->load(self::RELACIONES)->loadCount('ofertas');
     }
 }

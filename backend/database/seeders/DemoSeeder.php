@@ -83,7 +83,7 @@ class DemoSeeder extends Seeder
         // ---------------- Programas, módulos y mallas ----------------
         $ofimatica = Programa::create(['codigo' => 'DEMO-OFI', 'nombre' => 'Ofimática Profesional', 'tipo' => 'CURSO', 'estado' => 'ACTIVO',
             'descripcion' => 'Dominio de procesadores de texto, hojas de cálculo y presentaciones para el entorno laboral.']);
-        $contabilidad = Programa::create(['codigo' => 'DEMO-CON', 'nombre' => 'Diplomado en Contabilidad Básica', 'tipo' => 'DIPLOMADO', 'estado' => 'ACTIVO',
+        $contabilidad = Programa::create(['codigo' => 'DEMO-CON', 'nombre' => 'Curso de Contabilidad Básica', 'tipo' => 'CURSO', 'estado' => 'ACTIVO',
             'descripcion' => 'Fundamentos contables, registro de operaciones y elaboración de estados financieros.']);
         $web = Programa::create(['codigo' => 'DEMO-WEB', 'nombre' => 'Desarrollo Web desde Cero', 'tipo' => 'PROGRAMA_TECNICO', 'estado' => 'ACTIVO',
             'descripcion' => 'HTML, CSS, JavaScript y publicación de sitios web modernos.']);

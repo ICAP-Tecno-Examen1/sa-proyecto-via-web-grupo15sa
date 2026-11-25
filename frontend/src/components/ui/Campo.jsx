@@ -1,5 +1,6 @@
 import { Eye, EyeOff } from 'lucide-react'
 import { useId, useState } from 'react'
+import Selector from './Selector'
 
 /**
  * Campo de formulario con etiqueta, ayuda y mensaje de error accesibles.
@@ -9,6 +10,7 @@ import { useId, useState } from 'react'
  *   password: incluye un botón (ojito) para mostrar u ocultar lo escrito
  *   casillas: varias opciones a la vez; el valor es un arreglo
  *   opciones (select): [{ valor, etiqueta }]  o  ['A', 'B']
+ *   select: lista con buscador (se escribe y se filtran las opciones); vacio = texto de la opción vacía, null para no ofrecerla
  */
 export default function Campo({
   etiqueta,
@@ -43,20 +45,9 @@ export default function Campo({
   if (tipo === 'textarea') {
     control = <textarea rows={3} {...comunes} value={valor ?? ''} onChange={(e) => alCambiar(e.target.value)} />
   } else if (tipo === 'select') {
-    control = (
-      <select {...comunes} value={valor ?? ''} onChange={(e) => alCambiar(e.target.value)}>
-        {vacio !== null && <option value="">{vacio}</option>}
-        {opciones.map((o) => {
-          const opcion = typeof o === 'object' ? o : { valor: o, etiqueta: o }
-
-          return (
-            <option key={opcion.valor} value={opcion.valor}>
-              {opcion.etiqueta}
-            </option>
-          )
-        })}
-      </select>
-    )
+    // Lista con buscador: se escribe y aparecen las opciones que coinciden (ver Selector.jsx)
+    const { className: _clase, onBlur: _salir, ...atributos } = comunes
+    control = <Selector {...atributos} valor={valor} opciones={opciones} alCambiar={alCambiar} alSalir={alSalir} vacio={vacio} />
   } else if (tipo === 'file') {
     control = <input type="file" {...comunes} className="campo-control file:mr-3 file:rounded file:border-0 file:bg-primario-suave file:px-3 file:py-1 file:text-sm file:font-semibold file:text-primario" onChange={(e) => alCambiar(e.target.files?.[0] ?? null)} />
   } else if (tipo === 'casillas') {

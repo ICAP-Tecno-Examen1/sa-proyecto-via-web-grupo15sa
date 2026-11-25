@@ -43,7 +43,7 @@ export default function Correcciones() {
     <>
       <EncabezadoPagina titulo="Correcciones de nota" descripcion={resuelve
         ? 'Solicitudes de los docentes para modificar una calificación. Al aprobar, la nota cambia y se recalcula el resultado del estudiante.'
-        : 'Sus solicitudes de corrección. Para crear una nueva, abra el módulo y use «Corregir» junto a la calificación.'}>
+        : 'Sus solicitudes de corrección. Para crear una nueva, abra la materia y use «Corregir» junto a la calificación.'}>
         <Campo tipo="select" nombre="estado" valor={estado} alCambiar={setEstado} vacio="Todas" aria-label="Estado" className="w-44"
           opciones={['PENDIENTE', 'APROBADA', 'RECHAZADA'].map((e) => ({ valor: e, etiqueta: legible(e) }))} />
       </EncabezadoPagina>
@@ -59,7 +59,7 @@ export default function Correcciones() {
               columnas={[
                 { clave: 'fecha_solicitud', titulo: 'Solicitada', render: (c) => fechaHora(c.fecha_solicitud) },
                 { clave: 'estudiante', titulo: 'Estudiante', clase: 'font-semibold' },
-                { clave: 'modulo', titulo: 'Módulo / evaluación', render: (c) => (<>{c.modulo}<span className="block text-xs text-tenue">{c.evaluacion} · {c.oferta}</span></>) },
+                { clave: 'modulo', titulo: 'Materia / evaluación', render: (c) => (<>{c.modulo}<span className="block text-xs text-tenue">{c.evaluacion} · {c.oferta}</span></>) },
                 { clave: 'cambio', titulo: 'Cambio', render: (c) => (
                   <span className="tabular inline-flex items-center gap-1.5 font-bold">{c.nota_anterior} <ArrowRight className="size-3.5 text-tenue" aria-hidden /> {c.nota_nueva}</span>
                 ) },
@@ -77,7 +77,7 @@ export default function Correcciones() {
           <div className="space-y-4">
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <Dato etiqueta="Estudiante">{abierta.estudiante}</Dato>
-              <Dato etiqueta="Módulo">{abierta.modulo}</Dato>
+              <Dato etiqueta="Materia">{abierta.modulo}</Dato>
               <Dato etiqueta="Evaluación">{abierta.evaluacion}</Dato>
               <Dato etiqueta="Nota anterior"><span className="text-xl font-extrabold">{abierta.nota_anterior}</span></Dato>
               <Dato etiqueta="Nota nueva"><span className="text-xl font-extrabold text-primario">{abierta.nota_nueva}</span></Dato>

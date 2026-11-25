@@ -28,9 +28,12 @@ export const hoy = () => {
 }
 
 /** PENDIENTE_PAGO -> 'Pendiente pago' */
+// Palabras que los códigos de la API guardan sin tilde (TECNICO_MEDIO → «Técnico medio»).
+const TILDES = { tecnico: 'técnico', academico: 'académico', unico: 'único', electronico: 'electrónico' }
+
 export function legible(valor) {
   if (!valor) return '—'
-  const texto = String(valor).replaceAll('_', ' ').toLowerCase()
+  const texto = String(valor).replaceAll('_', ' ').toLowerCase().replace(/[a-z]+/g, (p) => TILDES[p] ?? p)
 
   return texto.charAt(0).toUpperCase() + texto.slice(1)
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\ReglaNegocioException;
 use App\Models\MallaCurricular;
+use App\Models\MallaModulo;
 use App\Models\Modulo;
 use App\Models\ModuloCarrera;
 use Illuminate\Support\Facades\DB;
@@ -33,14 +34,22 @@ class MallaService
                 'horas_totales' => $this->horasTotales($datos['modulos']),
             ]);
 
-            $this->guardarModulos($malla, $datos['modulos']);
-
-            if (! empty($datos['bloques'])) {
-                $this->guardarBloques($malla, $datos['bloques']);
-            }
+            $this->guardarPlan($malla, $datos);
 
             return $malla;
         });
+    }
+
+    /**
+     * Guarda el plan de estudios con un número FIJO de consultas, sin importar cuántas
+     * materias tenga: primero los módulos de la carrera (si hay) y luego todas las
+     * materias de una vez, cada una ya con su módulo. Importa cuando la base de datos
+     * está lejos (cada consulta puede tardar ~1 s y PHP corta a los 30 s).
+     */
+    private function guardarPlan(MallaCurricular $malla, array $datos): void
+    {
+        $moduloDeMateria = empty($datos['bloques']) ? [] : $this->guardarBloques($malla, $datos['bloques']);
+        $this->guardarModulos($malla, $datos['modulos'], $moduloDeMateria);
     }
 
     /**
@@ -81,20 +90,35 @@ class MallaService
         return $datos;
     }
 
-    /** Crea los módulos de la carrera y asigna a cada materia su módulo. */
-    private function guardarBloques(MallaCurricular $malla, array $bloques): void
+    /**
+     * Crea todos los módulos de la carrera en UNA consulta (INSERT … RETURNING de PostgreSQL)
+     * y devuelve a qué módulo pertenece cada materia: [id_modulo => id_modulo_carrera].
+     */
+    private function guardarBloques(MallaCurricular $malla, array $bloques): array
     {
-        foreach (array_values($bloques) as $i => $bloque) {
-            $modulo = ModuloCarrera::create([
-                'id_malla' => $malla->id_malla,
-                'nombre' => $bloque['nombre'],
-                'orden' => $bloque['orden'] ?? $i + 1,
-            ]);
+        $bloques = array_values($bloques);
+        $valores = [];
+        $parametros = [];
 
-            $malla->mallaModulos()
-                ->whereIn('id_modulo', array_column($bloque['modulos'], 'id_modulo'))
-                ->update(['id_modulo_carrera' => $modulo->id_modulo_carrera]);
+        foreach ($bloques as $i => $bloque) {
+            $valores[] = '(?, ?, ?)';
+            array_push($parametros, $malla->id_malla, $bloque['nombre'], $bloque['orden'] ?? $i + 1);
         }
+
+        $creados = DB::select(
+            'INSERT INTO modulo_carrera (id_malla, nombre, orden) VALUES '.implode(', ', $valores).' RETURNING id_modulo_carrera, orden',
+            $parametros,
+        );
+        $idPorOrden = array_column($creados, 'id_modulo_carrera', 'orden');
+
+        $moduloDeMateria = [];
+        foreach ($bloques as $i => $bloque) {
+            foreach ($bloque['modulos'] as $materia) {
+                $moduloDeMateria[(int) $materia['id_modulo']] = $idPorOrden[$bloque['orden'] ?? $i + 1];
+            }
+        }
+
+        return $moduloDeMateria;
     }
 
     public function actualizar(MallaCurricular $malla, array $datos): MallaCurricular
@@ -117,12 +141,8 @@ class MallaService
                 if (! $malla->ofertas()->exists()) {
                     $malla->mallaModulos()->delete();
                     $malla->bloques()->delete();
-                    $this->guardarModulos($malla, $datos['modulos']);
+                    $this->guardarPlan($malla, $datos);
                     $malla->horas_totales = $this->horasTotales($datos['modulos']);
-
-                    if (! empty($datos['bloques'])) {
-                        $this->guardarBloques($malla, $datos['bloques']);
-                    }
                 }
             }
 
@@ -163,7 +183,10 @@ class MallaService
             ->exists();
 
         if ($existe) {
-            throw new ReglaNegocioException("El programa ya tiene una malla con la versión «{$version}».");
+            throw new ReglaNegocioException(
+                "Este programa ya tiene una malla con la versión «{$version}». Búsquela en la lista y use «Editar» "
+                .'para cambiarla, o escriba otra versión (por ejemplo 2026-2). La versión solo se repite entre programas distintos.'
+            );
         }
     }
 
@@ -172,15 +195,16 @@ class MallaService
         return (int) Modulo::whereIn('id_modulo', array_column($modulos, 'id_modulo'))->sum('horas');
     }
 
-    private function guardarModulos(MallaCurricular $malla, array $modulos): void
+    /** Inserta todas las materias de la malla en UNA consulta, cada una con su módulo de carrera (si tiene). */
+    private function guardarModulos(MallaCurricular $malla, array $modulos, array $moduloDeMateria = []): void
     {
-        foreach (array_values($modulos) as $i => $modulo) {
-            $malla->mallaModulos()->create([
-                'id_modulo' => $modulo['id_modulo'],
-                'orden' => $modulo['orden'] ?? $i + 1,
-                'obligatorio' => $modulo['obligatorio'] ?? true,
-            ]);
-        }
+        MallaModulo::insert(array_map(fn ($modulo, $i) => [
+            'id_malla' => $malla->id_malla,
+            'id_modulo' => (int) $modulo['id_modulo'],
+            'orden' => $modulo['orden'] ?? $i + 1,
+            'obligatorio' => (bool) ($modulo['obligatorio'] ?? true),
+            'id_modulo_carrera' => $moduloDeMateria[(int) $modulo['id_modulo']] ?? null,
+        ], array_values($modulos), array_keys(array_values($modulos))));
     }
 
     private function cambianModulos(MallaCurricular $malla, array $modulos): bool

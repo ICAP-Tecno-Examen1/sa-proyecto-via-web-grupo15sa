@@ -1,5 +1,5 @@
 import {
-  Award, BookOpen, Briefcase, Building2, ClipboardCheck, Cpu, GraduationCap, Laptop, MonitorSmartphone,
+  Award, BookOpen, Briefcase, Calculator, Building2, ClipboardCheck, Cpu, GraduationCap, Laptop, MonitorSmartphone,
   Presentation, QrCode, ShieldCheck, Sparkles, UserRoundCheck, Users, Wallet, Wrench,
 } from 'lucide-react'
 
@@ -15,7 +15,7 @@ export const PORTADA = {
   titulo: 'Aprende una profesión técnica que',
   resaltado: 'cambiará tu vida.',
   descripcion:
-    'Cursos, talleres, diplomados y carreras técnicas de la UAGRM. Inscríbete, paga y sigue tu avance desde un solo lugar.',
+    'Cursos, talleres y carreras técnicas de la UAGRM. Inscríbete, paga y sigue tu avance desde un solo lugar.',
   accionPrincipal: 'Empieza hoy',
   accionSecundaria: 'Ver programas',
   garantias: [
@@ -26,7 +26,7 @@ export const PORTADA = {
 }
 
 /** Frases de la cinta cuando todavía no hay ofertas abiertas. */
-export const FRASES_CINTA = ['Cursos', 'Talleres', 'Seminarios', 'Diplomados', 'Técnico Medio', 'Técnico Superior', 'Programas técnicos']
+export const FRASES_CINTA = ['Cursos', 'Talleres', 'Técnico Auxiliar', 'Técnico Medio', 'Técnico Superior', 'Programas técnicos']
 
 /** Ruta de aprendizaje (la "senda" de la portada). El último paso se dibuja como trofeo. */
 export const PASOS = [
@@ -81,8 +81,7 @@ export const PERFILES = [
 export const ICONO_TIPO = {
   CURSO: BookOpen,
   TALLER: Wrench,
-  SEMINARIO: Presentation,
-  DIPLOMADO: GraduationCap,
+  TECNICO_AUXILIAR: Calculator,
   TECNICO_MEDIO: Cpu,
   TECNICO_SUPERIOR: Briefcase,
   PROGRAMA_TECNICO: Award,

@@ -13,7 +13,7 @@ import { fecha, fechaHora } from '../../utils/formato'
 import { maximo, minimo, requerido, requeridoSi } from '../../utils/validacion'
 
 const TITULOS = {
-  ACADEMICO: ['Requisito académico', 'Valida el Coordinador Académico: módulos obligatorios aprobados y asistencia mínima.'],
+  ACADEMICO: ['Requisito académico', 'Valida el Coordinador Académico: materias obligatorias aprobadas y asistencia mínima.'],
   FINANCIERO: ['Requisito financiero', 'Valida el Coordinador Financiero: sin deudas pendientes.'],
   DOCUMENTAL: ['Requisito documental', 'Valida la Secretaria: expediente completo y datos personales correctos.'],
 }

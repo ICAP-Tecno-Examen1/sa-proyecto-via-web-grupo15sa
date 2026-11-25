@@ -21,7 +21,7 @@ import { entre, numero, requerido } from '../../utils/validacion'
  * CU3 / CU4 · Ficha de la matrícula. Cada rol ve las mismas pestañas, pero
  * solo las acciones que le concede la matriz de permisos:
  *   Secretaria: registrar pagos, expediente, anular
- *   Coord. Académico: inscribir módulos, finalizar programa
+ *   Coord. Académico: inscribir en materias, finalizar programa
  *   Coord. Financiero: becas, registrar pagos
  */
 export default function MatriculaDetalle() {
@@ -100,7 +100,7 @@ export default function MatriculaDetalle() {
                   <Dato etiqueta="Certificado">{m.certificado?.codigo_unico ?? 'No emitido'}</Dato>
                 </dl>
 
-                {m.estado === 'PENDIENTE_PAGO' && <Alerta tipo="alerta" className="mt-4">Matrícula pendiente de pago: se activará, e inscribirá al estudiante en sus módulos, cuando se confirme el pago inicial (cuota 1).</Alerta>}
+                {m.estado === 'PENDIENTE_PAGO' && <Alerta tipo="alerta" className="mt-4">Matrícula pendiente de pago: se activará, e inscribirá al estudiante en sus materias, cuando se confirme el pago inicial (cuota 1).</Alerta>}
               </section>
 
               <div>
@@ -115,11 +115,11 @@ export default function MatriculaDetalle() {
                     <>
                       {auth.puede('inscripciones.gestionar') && m.estado === 'ACTIVA' && m.modulos_disponibles.length > 0 && (
                         <div className="mb-4 flex justify-end">
-                          <Boton variante="secundario" icono={Plus} onClick={() => (setModulosElegidos([]), setAccion({ tipo: 'inscribir' }))}>Inscribir en módulos</Boton>
+                          <Boton variante="secundario" icono={Plus} onClick={() => (setModulosElegidos([]), setAccion({ tipo: 'inscribir' }))}>Inscribir en materias</Boton>
                         </div>
                       )}
                       <ProgresoAcademico progreso={m.progreso} acciones={auth.puede('inscripciones.gestionar') && m.estado === 'ACTIVA' ? (mod) => mod.estado === 'INSCRITO' && (
-                        <Boton tamano="sm" variante="fantasma" className="text-peligro" icono={Trash2} aria-label="Retirar del módulo" onClick={() => setAccion({ tipo: 'retirar', dato: mod })} />
+                        <Boton tamano="sm" variante="fantasma" className="text-peligro" icono={Trash2} aria-label="Retirar de la materia" onClick={() => setAccion({ tipo: 'retirar', dato: mod })} />
                       ) : undefined} />
                     </>
                   )}
@@ -157,17 +157,17 @@ export default function MatriculaDetalle() {
                 <Expediente recurso={`/expedientes/${m.id_usuario}`} puedeSubir />
               </Modal>
 
-              <Modal abierto={accion?.tipo === 'inscribir'} titulo="Inscribir en módulos" alCerrar={() => setAccion(null)}
+              <Modal abierto={accion?.tipo === 'inscribir'} titulo="Inscribir en materias" alCerrar={() => setAccion(null)}
                 pie={<><Boton variante="secundario" onClick={() => setAccion(null)}>Cancelar</Boton>
-                  <Boton disabled={!modulosElegidos.length} cargando={procesando} onClick={() => ejecutar(() => api.post(`/matriculas/${id}/inscripciones`, { modulos_oferta: modulosElegidos }), 'Estudiante inscrito en los módulos seleccionados.')}>Inscribir</Boton></>}>
-                <p className="mb-3 text-sm">Seleccione los módulos de la oferta en los que se inscribirá al estudiante. Aparecerá en la lista del docente.</p>
+                  <Boton disabled={!modulosElegidos.length} cargando={procesando} onClick={() => ejecutar(() => api.post(`/matriculas/${id}/inscripciones`, { modulos_oferta: modulosElegidos }), 'Estudiante inscrito en las materias seleccionadas.')}>Inscribir</Boton></>}>
+                <p className="mb-3 text-sm">Seleccione las materias de la oferta en los que se inscribirá al estudiante. Aparecerá en la lista del docente.</p>
                 <ul className="space-y-1.5">
                   {m.modulos_disponibles.map((mod) => (
                     <li key={mod.id_oferta_modulo}>
                       <label className="flex cursor-pointer items-center gap-3 rounded-tema border px-3 py-2 text-sm hover:bg-suave">
                         <input type="checkbox" className="size-4 accent-[var(--primario)]" disabled={mod.estado === 'CERRADO'} checked={modulosElegidos.includes(mod.id_oferta_modulo)}
                           onChange={(e) => setModulosElegidos((p) => (e.target.checked ? [...p, mod.id_oferta_modulo] : p.filter((x) => x !== mod.id_oferta_modulo)))} />
-                        <span className="flex-1">{mod.orden}. {mod.nombre} <span className="text-xs text-tenue">· {mod.horas} h · {mod.obligatorio ? 'Obligatorio' : 'Optativo'}{mod.estado === 'CERRADO' ? ' · módulo cerrado' : ''}</span></span>
+                        <span className="flex-1">{mod.orden}. {mod.nombre} <span className="text-xs text-tenue">· {mod.horas} h · {mod.obligatorio ? 'Obligatorio' : 'Optativo'}{mod.estado === 'CERRADO' ? ' · materia cerrada' : ''}</span></span>
                       </label>
                     </li>
                   ))}
@@ -184,13 +184,13 @@ export default function MatriculaDetalle() {
               </Modal>
 
               <Confirmar abierto={accion?.tipo === 'finalizar'} titulo="Finalizar programa" variante="primario" textoConfirmar="Finalizar" cargando={procesando} alCerrar={() => setAccion(null)}
-                mensaje="Se cerrará el ciclo académico del estudiante. Todos sus módulos deben estar cerrados por los docentes. Después se validarán sus requisitos para el certificado."
+                mensaje="Se cerrará el ciclo académico del estudiante. Todas sus materias deben estar cerradas por los docentes. Después se validarán sus requisitos para el certificado."
                 alConfirmar={() => ejecutar(() => api.post(`/matriculas/${id}/finalizar`), 'Programa finalizado. Ya se pueden validar los requisitos del certificado.')} />
               <Confirmar abierto={accion?.tipo === 'anular'} titulo="Anular matrícula" textoConfirmar="Anular" cargando={procesando} alCerrar={() => setAccion(null)}
                 mensaje="La matrícula quedará anulada, sus cuotas pendientes se cancelarán y el cupo quedará libre. Esta acción no se puede deshacer."
                 alConfirmar={() => ejecutar(() => api.post(`/matriculas/${id}/anular`), 'Matrícula anulada.')} />
-              <Confirmar abierto={accion?.tipo === 'retirar'} titulo="Retirar del módulo" textoConfirmar="Retirar" cargando={procesando} alCerrar={() => setAccion(null)}
-                mensaje={`¿Retirar al estudiante del módulo «${accion?.dato?.modulo}»?`}
+              <Confirmar abierto={accion?.tipo === 'retirar'} titulo="Retirar de la materia" textoConfirmar="Retirar" cargando={procesando} alCerrar={() => setAccion(null)}
+                mensaje={`¿Retirar al estudiante de la materia «${accion?.dato?.modulo}»?`}
                 alConfirmar={() => ejecutar(() => api.delete(`/inscripciones/${accion.dato.id_inscripcion_modulo}`), 'Inscripción retirada.')} />
               <Confirmar abierto={accion?.tipo === 'revocar'} titulo="Revocar beca" textoConfirmar="Revocar" cargando={procesando} alCerrar={() => setAccion(null)}
                 mensaje="Las cuotas que aún no fueron pagadas volverán a su monto sin descuento."

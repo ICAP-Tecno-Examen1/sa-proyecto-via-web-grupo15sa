@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useConsulta } from '../../hooks/useConsulta'
 import { fecha, legible } from '../../utils/formato'
 
-/** CU5 · Módulos asignados al docente (o todos, para quien supervisa). */
+/** CU5 · Materias asignadas al docente (o todos, para quien supervisa). */
 export default function Docencia() {
   const auth = useAuth()
   const supervisa = auth.puede('academico.supervisar')
@@ -17,18 +17,18 @@ export default function Docencia() {
   return (
     <>
       <EncabezadoPagina
-        titulo={supervisa ? 'Módulos y calificaciones' : 'Mis módulos'}
+        titulo={supervisa ? 'Materias y calificaciones' : 'Mis materias'}
         descripcion={supervisa
-          ? 'Supervisión de todos los módulos: listas, asistencia, evaluaciones y notas registradas por los docentes.'
-          : 'Módulos que tiene asignados. Ingrese a cada uno para pasar lista, crear evaluaciones y registrar calificaciones.'}
+          ? 'Supervisión de todas las materias: listas, asistencia, evaluaciones y notas registradas por los docentes.'
+          : 'Materias que tiene asignadas. Ingrese a cada una para pasar lista, crear evaluaciones y registrar calificaciones.'}
       >
-        <Campo tipo="select" nombre="estado" valor={estado} alCambiar={setEstado} vacio="Todos los módulos" aria-label="Estado del módulo" className="w-48"
+        <Campo tipo="select" nombre="estado" valor={estado} alCambiar={setEstado} vacio="Todas las materias" aria-label="Estado de la materia" className="w-48"
           opciones={[{ valor: 'ACTIVO', etiqueta: 'En curso' }, { valor: 'CERRADO', etiqueta: 'Cerrados' }]} />
       </EncabezadoPagina>
 
       <Estado consulta={consulta}>
         {(modulos) => modulos.length === 0 ? (
-          <div className="tarjeta"><Vacio titulo="No hay módulos">{supervisa ? 'Aún no hay módulos ofertados.' : 'El Coordinador Académico todavía no le asignó módulos.'}</Vacio></div>
+          <div className="tarjeta"><Vacio titulo="No hay materias">{supervisa ? 'Aún no hay materias ofertadas.' : 'El Coordinador Académico todavía no le asignó materias.'}</Vacio></div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {modulos.map((m) => (

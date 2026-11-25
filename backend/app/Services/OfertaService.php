@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\ReglaNegocioException;
 use App\Models\MallaCurricular;
 use App\Models\OfertaAcademica;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -17,7 +18,7 @@ class OfertaService
 {
     public function crear(array $datos): OfertaAcademica
     {
-        $malla = MallaCurricular::with('mallaModulos')->findOrFail($datos['id_malla']);
+        $malla = MallaCurricular::with(['mallaModulos', 'bloques'])->findOrFail($datos['id_malla']);
 
         if ($malla->estado !== MallaCurricular::ACTIVO) {
             throw new ReglaNegocioException('Solo se puede ofertar una malla curricular activa.');
@@ -27,22 +28,53 @@ class OfertaService
             throw new ReglaNegocioException('La malla seleccionada no tiene módulos.');
         }
 
-        return DB::transaction(function () use ($datos, $malla) {
+        $calendario = $this->calendarioPorModulos($malla, Carbon::parse($datos['fecha_inicio']));
+
+        // En una carrera, la oferta termina cuando termina su último módulo.
+        if ($calendario) {
+            $datos['fecha_fin'] = collect($calendario)->last()['fin']->toDateString();
+        }
+
+        return DB::transaction(function () use ($datos, $malla, $calendario) {
             $oferta = OfertaAcademica::create([
                 ...$datos,
                 'estado' => OfertaAcademica::PLANIFICADA,
             ]);
 
             foreach ($malla->mallaModulos as $mallaModulo) {
+                $periodo = $calendario[$mallaModulo->id_modulo_carrera] ?? null;
+
                 $oferta->ofertaModulos()->create([
                     'id_malla_modulo' => $mallaModulo->id_malla_modulo,
-                    'fecha_inicio' => $oferta->fecha_inicio,
-                    'fecha_fin' => $oferta->fecha_fin,
+                    'fecha_inicio' => $periodo ? $periodo['inicio']->toDateString() : $oferta->fecha_inicio,
+                    'fecha_fin' => $periodo ? $periodo['fin']->toDateString() : $oferta->fecha_fin,
                 ]);
             }
 
             return $oferta;
         });
+    }
+
+    /**
+     * Calendario de una carrera: el módulo N se dicta en el mes N desde el inicio de la
+     * oferta (config icap.academico.meses_por_modulo) y sus 1 o 2 materias comparten ese
+     * periodo. Devuelve [id_modulo_carrera => [inicio, fin]], o [] si la malla no usa módulos.
+     */
+    public function calendarioPorModulos(MallaCurricular $malla, Carbon $inicio): array
+    {
+        $meses = (int) config('icap.academico.meses_por_modulo', 1);
+        $calendario = [];
+
+        foreach ($malla->bloques->sortBy('orden')->values() as $i => $bloque) {
+            $desde = $inicio->copy()->addMonthsNoOverflow($i * $meses);
+
+            $calendario[$bloque->id_modulo_carrera] = [
+                'inicio' => $desde,
+                'fin' => $inicio->copy()->addMonthsNoOverflow(($i + 1) * $meses)->subDay(),
+            ];
+        }
+
+        return $calendario;
     }
 
     public function actualizar(OfertaAcademica $oferta, array $datos): OfertaAcademica

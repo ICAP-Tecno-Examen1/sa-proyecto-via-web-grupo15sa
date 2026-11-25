@@ -39,7 +39,7 @@ export const RUTAS = [
 
   // --- CU2 · Oferta académica
   { ruta: '/programas', titulo: 'Programas', permiso: 'programas.ver', pagina: p(() => import('../pages/academico/Programas')) },
-  { ruta: '/modulos', titulo: 'Módulos', permiso: 'programas.ver', pagina: p(() => import('../pages/academico/Modulos')) },
+  { ruta: '/modulos', titulo: 'Materias', permiso: 'programas.ver', pagina: p(() => import('../pages/academico/Modulos')) },
   { ruta: '/mallas', titulo: 'Mallas curriculares', permiso: 'programas.ver', pagina: p(() => import('../pages/academico/Mallas')) },
   { ruta: '/ofertas', titulo: 'Ofertas académicas', permiso: 'ofertas.ver', pagina: p(() => import('../pages/academico/Ofertas')) },
   { ruta: '/ofertas/:id', titulo: 'Detalle de la oferta', permiso: 'ofertas.ver', pagina: p(() => import('../pages/academico/OfertaDetalle')) },
@@ -60,8 +60,8 @@ export const RUTAS = [
   { ruta: '/mis-pagos', titulo: 'Mis pagos', permiso: 'pagos.propios', pagina: p(() => import('../pages/finanzas/MisPagos')) },
 
   // --- CU5 · Académico
-  { ruta: '/docencia', titulo: 'Módulos y calificaciones', permiso: 'docencia.ver', pagina: p(() => import('../pages/evaluacion/Docencia')) },
-  { ruta: '/docencia/:id', titulo: 'Planilla del módulo', permiso: 'docencia.ver', pagina: p(() => import('../pages/evaluacion/Planilla')) },
+  { ruta: '/docencia', titulo: 'Materias y calificaciones', permiso: 'docencia.ver', pagina: p(() => import('../pages/evaluacion/Docencia')) },
+  { ruta: '/docencia/:id', titulo: 'Planilla de la materia', permiso: 'docencia.ver', pagina: p(() => import('../pages/evaluacion/Planilla')) },
   { ruta: '/correcciones', titulo: 'Correcciones de nota', permiso: 'correcciones.ver', pagina: p(() => import('../pages/evaluacion/Correcciones')) },
 
   // --- CU6 · Certificación

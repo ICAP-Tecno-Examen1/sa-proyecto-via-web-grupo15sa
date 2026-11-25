@@ -17,7 +17,7 @@ const MAXIMO_MATERIAS = 2 // por módulo de carrera (ModuloCarrera::MAXIMO_MATER
 
 /*
  * Dos formas de armar una malla:
- *   simple   lista ordenada de materias (cursos, talleres, seminarios…)
+ *   simple   lista ordenada de materias (cursos, talleres, programas técnicos…)
  *   carrera  módulos de la carrera; cada módulo agrupa 1 o 2 materias
  */
 const inicial = { id_programa: '', version: '', fecha_vigencia: '', estado: 'ACTIVO', modo: 'simple', modulos: [], bloques: [] }
@@ -184,7 +184,7 @@ export default function Mallas() {
 
             <div role="radiogroup" aria-label="Forma de la malla" className="grid gap-2 sm:grid-cols-2">
               {[
-                ['simple', ListOrdered, 'Lista de materias', 'Cursos, talleres y seminarios'],
+                ['simple', ListOrdered, 'Lista de materias', 'Cursos, talleres y programas técnicos'],
                 ['carrera', Layers, 'Carrera por módulos', 'Cada módulo agrupa 1 o 2 materias'],
               ].map(([modo, Icono, titulo, detalle]) => (
                 <button key={modo} type="button" role="radio" aria-checked={f.valores.modo === modo} className="opcion-leccion"

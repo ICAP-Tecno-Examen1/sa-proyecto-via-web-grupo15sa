@@ -25,7 +25,7 @@ const SIGUIENTES = {
   CANCELADA: [['PLANIFICADA', 'Reactivar', 'secundario']],
 }
 
-/** CU2 · Detalle de la oferta: datos, módulos, docentes asignados y costos. */
+/** CU2 · Detalle de la oferta: datos, materias, docentes asignados y costos. */
 export default function OfertaDetalle() {
   const { id } = useParams()
   const auth = useAuth()
@@ -63,7 +63,7 @@ export default function OfertaDetalle() {
 
   const guardarFechas = fFechas.enviar(async (valores) => {
     const { data } = await api.put(`/ofertas-modulo/${moduloFechas.id_oferta_modulo}`, { ...valores, fecha_fin: valores.fecha_fin || null })
-    aplicar(data, 'Fechas del módulo actualizadas.')
+    aplicar(data, 'Fechas de la materia actualizadas.')
     setModuloFechas(null)
   })
 
@@ -73,7 +73,7 @@ export default function OfertaDetalle() {
     if (asignacion.actual) await api.put(`/asignaciones-docente/${asignacion.actual.id_asignacion_docente}`, cuerpo)
     else await api.post('/asignaciones-docente', { ...cuerpo, id_oferta_modulo: asignacion.modulo.id_oferta_modulo, id_usuario_docente: Number(valores.id_usuario_docente) })
 
-    avisar.exito(asignacion.actual ? 'Contratación actualizada.' : 'Docente asignado al módulo.')
+    avisar.exito(asignacion.actual ? 'Contratación actualizada.' : 'Docente asignado a la materia.')
     setAsignacion(null)
     consulta.recargar()
   })
@@ -162,7 +162,7 @@ export default function OfertaDetalle() {
               )}
             </Tarjeta>
 
-            <Tarjeta titulo="Módulos y docentes" relleno={false}>
+            <Tarjeta titulo="Materias y docentes" relleno={false}>
               <ul>
                 {o.modulos.map((m) => (
                   <li key={m.id_oferta_modulo} className="border-b p-4 last:border-b-0">
@@ -218,8 +218,8 @@ export default function OfertaDetalle() {
               pie={<><Boton variante="secundario" onClick={() => setModuloFechas(null)}>Cancelar</Boton><Boton onClick={guardarFechas} cargando={fFechas.enviando}>Guardar</Boton></>}>
               <form onSubmit={guardarFechas} noValidate className="space-y-4">
                 {fFechas.errorGeneral && <Alerta tipo="peligro">{fFechas.errorGeneral}</Alerta>}
-                <Campo {...fFechas.campo('fecha_inicio')} tipo="date" etiqueta="Inicio del módulo" requerido />
-                <Campo {...fFechas.campo('fecha_fin')} tipo="date" etiqueta="Fin del módulo" />
+                <Campo {...fFechas.campo('fecha_inicio')} tipo="date" etiqueta="Inicio de la materia" requerido />
+                <Campo {...fFechas.campo('fecha_fin')} tipo="date" etiqueta="Fin de la materia" />
               </form>
             </Modal>
 
@@ -239,7 +239,7 @@ export default function OfertaDetalle() {
               </form>
             </Modal>
 
-            <Confirmar abierto={Boolean(quitando)} titulo="Quitar docente" mensaje={`¿Quitar a ${quitando?.docente.nombre_completo} de este módulo?`} textoConfirmar="Quitar" alConfirmar={quitarDocente} alCerrar={() => setQuitando(null)} />
+            <Confirmar abierto={Boolean(quitando)} titulo="Quitar docente" mensaje={`¿Quitar a ${quitando?.docente.nombre_completo} de esta materia?`} textoConfirmar="Quitar" alConfirmar={quitarDocente} alCerrar={() => setQuitando(null)} />
             <Confirmar abierto={Boolean(cambioEstado)} titulo={cambioEstado?.[1]} variante={cambioEstado?.[2] === 'peligro' ? 'peligro' : 'primario'} textoConfirmar="Confirmar"
               mensaje={`La oferta ${o.codigo} pasará al estado «${legible(cambioEstado?.[0])}».`} alConfirmar={confirmarEstado} alCerrar={() => setCambioEstado(null)} />
           </div>

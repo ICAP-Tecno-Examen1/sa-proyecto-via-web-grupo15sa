@@ -4,7 +4,7 @@ import { fecha, legible, porcentaje } from '../../utils/formato'
 import { Insignia, Vacio } from '../ui/Basicos'
 
 /**
- * CU3 / CU5 · Avance académico de una matrícula: módulos, notas por
+ * CU3 / CU5 · Avance académico de una matrícula: materias, notas por
  * evaluación, nota final y asistencia. Lo usan el estudiante y el personal.
  */
 export default function ProgresoAcademico({ progreso, acciones }) {
@@ -12,7 +12,7 @@ export default function ProgresoAcademico({ progreso, acciones }) {
   const { modulos, resumen } = progreso
 
   if (modulos.length === 0) {
-    return <Vacio titulo="Aún no está inscrito en módulos">La inscripción se realiza al activarse la matrícula (pago inicial confirmado).</Vacio>
+    return <Vacio titulo="Aún no está inscrito en materias">La inscripción se realiza al activarse la matrícula (pago inicial confirmado).</Vacio>
   }
 
   return (
@@ -20,7 +20,7 @@ export default function ProgresoAcademico({ progreso, acciones }) {
       <div>
         <div className="mb-1 flex justify-between text-sm">
           <span className="font-semibold">Avance del programa</span>
-          <span className="tabular">{resumen.modulos_aprobados} de {resumen.modulos_obligatorios} módulos obligatorios aprobados · {porcentaje(resumen.porcentaje_avance)}</span>
+          <span className="tabular">{resumen.modulos_aprobados} de {resumen.modulos_obligatorios} materias obligatorias aprobadas · {porcentaje(resumen.porcentaje_avance)}</span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-suave" role="progressbar" aria-valuenow={resumen.porcentaje_avance} aria-valuemin={0} aria-valuemax={100} aria-label="Avance del programa">
           <div className="h-full rounded-full bg-primario transition-all" style={{ width: `${resumen.porcentaje_avance}%` }} />

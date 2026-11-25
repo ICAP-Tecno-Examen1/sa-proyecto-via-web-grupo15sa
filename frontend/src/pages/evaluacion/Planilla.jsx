@@ -13,8 +13,8 @@ import { fecha, hoy, legible, porcentaje } from '../../utils/formato'
 import { entre, fechaNoFutura, maximo, minimo, numero, requerido } from '../../utils/validacion'
 
 /**
- * CU5 · Planilla del módulo: calificaciones, asistencia y evaluaciones.
- * El docente asignado edita mientras el módulo está en curso; al cerrarlo se
+ * CU5 · Planilla de la materia: calificaciones, asistencia y evaluaciones.
+ * El docente asignado edita mientras la materia está en curso; al cerrarlo se
  * fijan las notas finales y los cambios pasan por una corrección de nota.
  */
 export default function Planilla() {
@@ -31,7 +31,7 @@ export default function Planilla() {
     try {
       const { data } = await api.post(`/docencia/modulos/${id}/cerrar`)
       consulta.setDatos({ ...consulta.datos, ...data })
-      avisar.exito('Módulo cerrado: se fijaron las notas finales y los resultados.')
+      avisar.exito('Materia cerrada: se fijaron las notas finales y los resultados.')
     } catch (e) {
       avisar.error(e)
     } finally {
@@ -43,7 +43,7 @@ export default function Planilla() {
   return (
     <>
       <Link to="/docencia" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primario hover:underline">
-        <ArrowLeft className="size-4" aria-hidden /> Volver a módulos
+        <ArrowLeft className="size-4" aria-hidden /> Volver a materias
       </Link>
 
       <Estado consulta={consulta}>
@@ -60,7 +60,7 @@ export default function Planilla() {
                     <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold">{p.modulo.nombre} <Insignia estado={p.modulo.estado}>{abierto ? 'En curso' : 'Cerrado'}</Insignia></h1>
                     <p className="text-sm text-tenue">{p.modulo.programa} · Oferta {p.modulo.oferta} · Gestión {p.modulo.gestion}</p>
                   </div>
-                  {edita && <Boton icono={Lock} onClick={() => setCerrando(true)}>Cerrar módulo</Boton>}
+                  {edita && <Boton icono={Lock} onClick={() => setCerrando(true)}>Cerrar materia</Boton>}
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
                   <Dato etiqueta="Docente">{p.modulo.docentes.join(', ') || 'Sin asignar'}</Dato>
@@ -72,8 +72,8 @@ export default function Planilla() {
                 <p className="mt-3 text-xs text-tenue">
                   Reglas: aprueba con nota final ≥ {p.reglas.nota_minima_aprobacion} y asistencia ≥ {p.reglas.asistencia_minima}%. Nota final = Σ (calificación × ponderación).
                 </p>
-                {!p.puede_editar && <Alerta className="mt-3">Vista de supervisión: solo el docente asignado puede registrar información en este módulo.</Alerta>}
-                {p.puede_editar && !abierto && <Alerta className="mt-3">El módulo está cerrado. Para cambiar una calificación use «Corregir» junto a la nota: la solicitud la aprueba el Coordinador Académico.</Alerta>}
+                {!p.puede_editar && <Alerta className="mt-3">Vista de supervisión: solo el docente asignado puede registrar información en esta materia.</Alerta>}
+                {p.puede_editar && !abierto && <Alerta className="mt-3">La materia está cerrada. Para cambiar una calificación use «Corregir» junto a la nota: la solicitud la aprueba el Coordinador Académico.</Alerta>}
               </section>
 
               <div>
@@ -91,7 +91,7 @@ export default function Planilla() {
                 </div>
               </div>
 
-              <Confirmar abierto={cerrando} titulo="Cerrar módulo" variante="primario" textoConfirmar="Cerrar módulo" cargando={procesando} alConfirmar={cerrar} alCerrar={() => setCerrando(false)}
+              <Confirmar abierto={cerrando} titulo="Cerrar materia" variante="primario" textoConfirmar="Cerrar materia" cargando={procesando} alConfirmar={cerrar} alCerrar={() => setCerrando(false)}
                 mensaje="Se calcularán las notas finales y la asistencia de cada estudiante, y quedarán como aprobados o reprobados. Después del cierre, las notas solo cambian mediante una corrección autorizada. Las ponderaciones deben sumar 100%." />
             </div>
           )
@@ -377,11 +377,11 @@ function Evaluaciones({ p, edita, alGuardar }) {
   return (
     <div className="p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm">Ponderación asignada: <strong className={p.ponderacion_total === 100 ? 'text-exito' : 'text-alerta'}>{porcentaje(p.ponderacion_total)}</strong> de 100%. Para cerrar el módulo debe sumar exactamente 100%.</p>
+        <p className="text-sm">Ponderación asignada: <strong className={p.ponderacion_total === 100 ? 'text-exito' : 'text-alerta'}>{porcentaje(p.ponderacion_total)}</strong> de 100%. Para cerrar la materia debe sumar exactamente 100%.</p>
         {edita && <Boton icono={Plus} disabled={p.ponderacion_total >= 100} onClick={() => (f.reiniciar({ nombre: '', tipo: '', ponderacion: '', fecha: hoy() }), setEditando({}))}>Nueva evaluación</Boton>}
       </div>
 
-      {p.evaluaciones.length === 0 ? <Vacio titulo="Sin evaluaciones">Cree las evaluaciones del módulo y asigne el peso de cada una.</Vacio> : (
+      {p.evaluaciones.length === 0 ? <Vacio titulo="Sin evaluaciones">Cree las evaluaciones de la materia y asigne el peso de cada una.</Vacio> : (
         <ul className="divide-y rounded-tema border">
           {p.evaluaciones.map((e) => (
             <li key={e.id_evaluacion} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">

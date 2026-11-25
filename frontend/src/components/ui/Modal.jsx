@@ -8,11 +8,19 @@ const ANCHOS = { sm: 'max-w-md', md: 'max-w-2xl', lg: 'max-w-4xl', xl: 'max-w-6x
 export default function Modal({ abierto, titulo, alCerrar, children, pie, ancho = 'md' }) {
   const caja = useRef(null)
 
+  // alCerrar suele llegar como función nueva en cada render (() => setEditando(null)).
+  // Se guarda en una referencia para que el efecto de abajo dependa SOLO de "abierto":
+  // si dependiera de alCerrar, se repetiría con cada tecla y le quitaría el foco al campo.
+  const cerrar = useRef(alCerrar)
+  useEffect(() => {
+    cerrar.current = alCerrar
+  }, [alCerrar])
+
   useEffect(() => {
     if (!abierto) return undefined
 
     const anterior = document.activeElement
-    const alTeclear = (e) => e.key === 'Escape' && alCerrar()
+    const alTeclear = (e) => e.key === 'Escape' && cerrar.current()
     document.addEventListener('keydown', alTeclear)
     document.body.style.overflow = 'hidden'
     caja.current?.focus()
@@ -22,7 +30,7 @@ export default function Modal({ abierto, titulo, alCerrar, children, pie, ancho 
       document.body.style.overflow = ''
       anterior?.focus?.()
     }
-  }, [abierto, alCerrar])
+  }, [abierto])
 
   if (!abierto) return null
 

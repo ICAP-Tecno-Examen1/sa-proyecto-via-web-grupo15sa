@@ -24,6 +24,7 @@ import Tabla, { Paginacion } from './Tabla'
  *   reglas           reglas de validación del cliente (pueden ser función de "editando")
  *   inicial          valores de un registro nuevo
  *   permisoGestion   permiso para crear / editar / eliminar
+ *   singular         nombre del registro («programa», «materia»); con femenino: «Nueva materia», «Se registró la beca»
  *   filtros          [{ nombre, etiqueta, opciones }]  filtros tipo lista
  *   paginado         la API responde paginado (data, current_page…)
  *   aFormulario      (fila) => valores del formulario al editar
@@ -32,12 +33,13 @@ import Tabla, { Paginacion } from './Tabla'
  */
 export default function CrudSimple({
   titulo, descripcion, recurso, id, columnas, campos, reglas = {}, inicial, permisoGestion, filtros = [], paginado = false,
-  singular = 'registro', buscar = true, puedeEliminar = true, aFormulario = (f) => f, aEnvio = (v) => v, accionesFila, nota, anchoModal = 'md',
+  singular = 'registro', femenino = false, buscar = true, puedeEliminar = true, aFormulario = (f) => f, aEnvio = (v) => v, accionesFila, nota, anchoModal = 'md',
   parametros = {}, recursoCrear,
 }) {
   const auth = useAuth()
   const avisar = useAvisos()
   const gestiona = auth.puede(permisoGestion)
+  const g = femenino ? { nuevo: 'Nueva', el: 'la', este: 'esta' } : { nuevo: 'Nuevo', el: 'el', este: 'este' }
 
   const [parametrosUrl] = useSearchParams()
   const [texto, setTexto] = useState(parametrosUrl.get('q') ?? '')
@@ -65,7 +67,7 @@ export default function CrudSimple({
     if (esNuevo) await api.post(recursoCrear ?? recurso, cuerpo)
     else await api.put(`${recurso}/${editando[id]}`, cuerpo)
 
-    avisar.exito(esNuevo ? `Se registró el ${singular}.` : `Se actualizó el ${singular}.`)
+    avisar.exito(esNuevo ? `Se registró ${g.el} ${singular}.` : `Se actualizó ${g.el} ${singular}.`)
     setEditando(null)
     consulta.recargar()
   })
@@ -75,7 +77,7 @@ export default function CrudSimple({
 
     try {
       const { data } = await api.delete(`${recurso}/${eliminando[id]}`)
-      avisar.exito(data.message ?? `Se eliminó el ${singular}.`)
+      avisar.exito(data.message ?? `Se eliminó ${g.el} ${singular}.`)
       consulta.recargar()
     } catch (e) {
       avisar.error(e)
@@ -101,7 +103,7 @@ export default function CrudSimple({
   return (
     <>
       <EncabezadoPagina titulo={titulo} descripcion={descripcion}>
-        {gestiona && <Boton icono={Plus} onClick={() => abrir(null)}>Nuevo {singular}</Boton>}
+        {gestiona && <Boton icono={Plus} onClick={() => abrir(null)}>{g.nuevo} {singular}</Boton>}
       </EncabezadoPagina>
 
       {nota}
@@ -129,7 +131,7 @@ export default function CrudSimple({
 
       <Modal
         abierto={Boolean(editando)}
-        titulo={`${esNuevo ? 'Nuevo' : 'Editar'} ${singular}`}
+        titulo={`${esNuevo ? g.nuevo : 'Editar'} ${singular}`}
         alCerrar={() => setEditando(null)}
         ancho={anchoModal}
         pie={
@@ -153,7 +155,7 @@ export default function CrudSimple({
       <Confirmar
         abierto={Boolean(eliminando)}
         titulo={`Eliminar ${singular}`}
-        mensaje={`¿Está seguro de eliminar este ${singular}? Esta acción no se puede deshacer.`}
+        mensaje={`¿Está seguro de eliminar ${g.este} ${singular}? Esta acción no se puede deshacer.`}
         textoConfirmar="Eliminar"
         alConfirmar={eliminar}
         alCerrar={() => setEliminando(null)}
