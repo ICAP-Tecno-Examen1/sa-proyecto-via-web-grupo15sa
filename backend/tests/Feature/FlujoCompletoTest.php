@@ -365,6 +365,9 @@ class FlujoCompletoTest extends TestCase
         $this->como('docente')->getJson('/api/reportes/ingresos')->assertStatus(403);
         $this->assertEquals(700, collect($this->ok($this->como('coord.financiero')->getJson('/api/reportes/ingresos'))['filas'])->sum('monto'));
         $this->como('director')->get('/api/reportes/matriculas?formato=csv')->assertOk()->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $excel = $this->como('director')->get('/api/reportes/matriculas?formato=xlsx')->assertOk()
+            ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->assertStringStartsWith('PK', $excel->getContent(), 'Debe ser un .xlsx (zip)');
         $this->assertStringStartsWith('%PDF', $this->como('director')->get('/api/reportes/matriculas?formato=pdf')->assertOk()->getContent());
 
         $this->assertGreaterThan(0, $this->ok($this->como('director')->getJson('/api/busqueda?q=camila'))['total']);

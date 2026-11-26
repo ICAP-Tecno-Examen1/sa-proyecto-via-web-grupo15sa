@@ -83,7 +83,7 @@ export default function Reportes() {
         {reporte.datos && (
           <>
             <Boton variante="secundario" icono={Printer} onClick={() => window.print()}>Imprimir</Boton>
-            <Boton variante="secundario" icono={FileSpreadsheet} cargando={exportando === 'csv'} onClick={() => exportar('csv')}>Excel (CSV)</Boton>
+            <Boton variante="secundario" icono={FileSpreadsheet} cargando={exportando === 'xlsx'} onClick={() => exportar('xlsx')}>Excel</Boton>
             <Boton variante="secundario" icono={FileText} cargando={exportando === 'pdf'} onClick={() => exportar('pdf')}>PDF</Boton>
           </>
         )}
