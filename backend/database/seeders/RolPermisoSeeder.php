@@ -103,7 +103,8 @@ class RolPermisoSeeder extends Seeder
         ]],
         Rol::COORDINADOR_ACADEMICO => ['Gestiona programas, mallas, ofertas, docentes y el seguimiento académico', [
             'programas.ver', 'programas.gestionar', 'ofertas.ver', 'ofertas.gestionar', 'docentes.asignar',
-            'preinscripciones.ver', 'matriculas.ver', 'inscripciones.gestionar',
+            // También acepta, observa o rechaza preinscripciones (igual que la Secretaría)
+            'preinscripciones.ver', 'preinscripciones.revisar', 'matriculas.ver', 'inscripciones.gestionar',
             'docencia.ver', 'academico.supervisar', 'correcciones.ver', 'correcciones.resolver',
             'certificacion.ver', 'requisitos.academico',
             'documentos.ver', 'documentos.registrar', 'documentos.academico',

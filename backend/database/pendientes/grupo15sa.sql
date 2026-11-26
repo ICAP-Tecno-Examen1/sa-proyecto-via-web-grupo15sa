@@ -43,4 +43,10 @@ SELECT padre.id_padre, p.id_permiso, 'Cuotas por cobrar', '/cuentas-por-cobrar',
  WHERE p.accion = 'pagos.ver'
    AND NOT EXISTS (SELECT 1 FROM menu_item WHERE ruta = '/cuentas-por-cobrar');
 
+-- [P13] El Coordinador Académico también acepta, observa o rechaza preinscripciones
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso FROM rol r, permiso p
+ WHERE r.nombre = 'Coordinador Académico' AND p.accion = 'preinscripciones.revisar'
+   AND NOT EXISTS (SELECT 1 FROM rol_permiso x WHERE x.id_rol = r.id_rol AND x.id_permiso = p.id_permiso);
+
 COMMIT;

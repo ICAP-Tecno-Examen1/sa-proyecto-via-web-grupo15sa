@@ -26,7 +26,7 @@ return [
 
     'academico' => [
         'nota_minima_aprobacion' => (float) env('ICAP_NOTA_MINIMA', 51),
-        'asistencia_minima' => (float) env('ICAP_ASISTENCIA_MINIMA', 80),
+        'asistencia_minima' => (float) env('ICAP_ASISTENCIA_MINIMA', 70),
         'nota_maxima' => 100,
         // Carreras: cada módulo de la carrera dura este número de meses y sus 1 o 2
         // materias se dictan al mismo tiempo. El calendario se genera al crear la oferta

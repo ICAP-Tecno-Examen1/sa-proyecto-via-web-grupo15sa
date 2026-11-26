@@ -1,4 +1,4 @@
-import { Plus, Save, Trash2 } from 'lucide-react'
+import { Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import api from '../../api/cliente'
 import { Alerta, Cargando, EncabezadoPagina, Insignia, Tarjeta } from '../../components/ui/Basicos'
@@ -54,6 +54,22 @@ export default function Roles() {
 
     return nuevos
   })
+
+  // Rol base: vuelve a los permisos de la matriz inicial (deshace lo marcado aquí después)
+  const restablecer = async () => {
+    setGuardando(true)
+
+    try {
+      const { data } = await api.post(`/roles/${rol.id_rol}/restablecer`)
+      avisar.exito(data.message)
+      await roles.recargar()
+      if (rol.id_rol === auth.rolActivo?.id_rol) await auth.refrescar()
+    } catch (e) {
+      avisar.error(e)
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   const guardar = async () => {
     setGuardando(true)
@@ -123,6 +139,7 @@ export default function Roles() {
             acciones={gestiona && (
               <>
                 {!rol.es_base && <Boton variante="fantasma" icono={Trash2} className="text-peligro" onClick={() => setEliminando(true)}>Eliminar rol</Boton>}
+                {rol.es_base && <Boton variante="secundario" icono={RotateCcw} onClick={restablecer} cargando={guardando} title="Vuelve a los permisos de la matriz de acceso inicial">Restablecer originales</Boton>}
                 <Boton icono={Save} onClick={guardar} cargando={guardando} disabled={!hayCambios}>Guardar permisos</Boton>
               </>
             )}

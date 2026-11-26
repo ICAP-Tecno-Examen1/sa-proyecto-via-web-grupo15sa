@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Exceptions\ReglaNegocioException;
 use App\Models\MallaCurricular;
+use App\Models\Matricula;
 use App\Models\OfertaAcademica;
+use App\Models\OfertaModulo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +18,60 @@ use Illuminate\Support\Facades\DB;
  */
 class OfertaService
 {
+    public function __construct(private readonly MatriculaService $matriculas) {}
+
+    /**
+     * «Finalizar curso» (curso, taller o carrera): se hace desde la oferta cuando los docentes
+     * cerraron TODAS sus materias. Finaliza la matrícula de cada estudiante activo y abre las
+     * validaciones de su certificado. Solo quien aprobó todo (materias con nota y asistencia
+     * mínimas) podrá recibirlo; quien reprobó alguna debe recuperarla antes.
+     *
+     * @return array{finalizados: int, aprobados: array<int, string>, con_pendientes: array<int, array{estudiante: string, materias: array}>, omitidos: array<int, string>}
+     */
+    public function finalizarCurso(OfertaAcademica $oferta): array
+    {
+        if ($oferta->estado !== OfertaAcademica::EN_CURSO) {
+            throw new ReglaNegocioException('Solo se finaliza un curso que está en curso.');
+        }
+
+        $abiertas = $oferta->ofertaModulos()->where('estado', '<>', OfertaModulo::CERRADO)->with('mallaModulo.modulo')->get();
+
+        if ($abiertas->isNotEmpty()) {
+            throw new ReglaNegocioException('Para finalizar el curso, los docentes deben cerrar todas sus materias. Faltan: '
+                .$abiertas->map(fn ($om) => $om->mallaModulo->modulo->nombre)->implode(', ').'.');
+        }
+
+        return DB::transaction(function () use ($oferta) {
+            $resumen = ['finalizados' => 0, 'aprobados' => [], 'con_pendientes' => [], 'omitidos' => []];
+
+            foreach ($oferta->matriculas()->where('estado', Matricula::ACTIVA)->with('usuario')->get() as $matricula) {
+                $nombre = $matricula->usuario->nombre_completo;
+
+                try {
+                    $this->matriculas->finalizar($matricula);
+                } catch (ReglaNegocioException $e) {
+                    // Por ejemplo, está cursando la recuperación de una materia en otra oferta.
+                    $resumen['omitidos'][] = "{$nombre}: {$e->getMessage()}";
+
+                    continue;
+                }
+
+                $resumen['finalizados']++;
+                $pendientes = $this->matriculas->materiasPendientes($matricula);
+
+                if ($pendientes->isEmpty()) {
+                    $resumen['aprobados'][] = $nombre;
+                } else {
+                    $resumen['con_pendientes'][] = ['estudiante' => $nombre, 'materias' => $pendientes->pluck('materia')->all()];
+                }
+            }
+
+            $oferta->update(['estado' => OfertaAcademica::FINALIZADA]);
+
+            return $resumen;
+        });
+    }
+
     public function crear(array $datos): OfertaAcademica
     {
         $malla = MallaCurricular::with(['mallaModulos', 'bloques'])->findOrFail($datos['id_malla']);

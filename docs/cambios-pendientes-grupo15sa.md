@@ -37,6 +37,8 @@ Luego, en pgAdmin conectado a `db_grupo15sa`: *Query Tool* → abrir `backend/da
 | P10 | 26/11/2026 | **Menú «Cuotas por cobrar»** (Finanzas). | `database/pendientes/grupo15sa.sql` | ⏳ Pendiente |
 | P11 | 26/11/2026 | **Becas con estado y cursos** (diseño original: la beca es el convenio; la institución va en `beca.institucion_financiadora`). Agrega `beca.estado` (ACTIVA/INACTIVA) y la tabla `beca_oferta` (cursos que cubre; sin filas = todos). Script `sql/09_becas_estado_y_cursos.sql`. | `php artisan migrate` (migración `2026_11_26_000003_becas_estado_y_cursos`) | ⏳ Pendiente |
 | P12 | 26/11/2026 | **Cargar las becas por convenio reales**: institución financiadora, porcentaje, cursos que cubre, documento que deben presentar y estado. | Manual: `coord.financiero` → *Finanzas › Becas › Catálogo de becas* | ⏳ Pendiente |
+| P13 | 26/11/2026 | **El Coordinador Académico también acepta preinscripciones** (permiso `preinscripciones.revisar`, además de la Secretaría). | `database/pendientes/grupo15sa.sql` | ⏳ Pendiente |
+| P14 | 26/11/2026 | **Asistencia mínima del 70 %** para aprobar una materia (antes 80 %). Rige para las materias que se cierren desde ahora. | Configuración: en el `.env` del servidor, `ICAP_ASISTENCIA_MINIMA=70` (o quitar la línea: el valor por defecto ya es 70). | ⏳ Pendiente |
 | P8 | 26/11/2026 | Descripción del método **Efectivo** para el estudiante (ahora puede elegirlo para avisar que pagará en caja). | `database/pendientes/grupo15sa.sql` | ⏳ Pendiente |
 
 ## Lo que ya está aplicado en db_grupo15sa (no repetir)

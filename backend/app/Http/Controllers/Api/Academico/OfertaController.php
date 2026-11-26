@@ -75,6 +75,14 @@ class OfertaController extends Controller
     {
         $datos = $request->validate(['estado' => ['required', Rule::in(OfertaAcademica::ESTADOS)]]);
 
+        // Finalizar = cerrar el curso: finaliza a todos los estudiantes y resume quién aprobó
+        if ($datos['estado'] === OfertaAcademica::FINALIZADA) {
+            $resumen = $this->ofertas->finalizarCurso($oferta);
+            Auditoria::describir("Finalizó el curso {$oferta->codigo}: {$resumen['finalizados']} estudiantes, ".count($resumen['aprobados']).' aprobados');
+
+            return response()->json([...$this->ofertas->detalle($oferta->refresh(), true), 'resumen_finalizacion' => $resumen]);
+        }
+
         $this->ofertas->cambiarEstado($oferta, $datos['estado']);
         Auditoria::describir("Cambió la oferta {$oferta->codigo} a estado {$datos['estado']}");
 

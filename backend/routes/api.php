@@ -97,6 +97,7 @@ Route::middleware(['auth:sanctum', 'usuario.activo'])->group(function () {
     Route::get('permisos', [RolController::class, 'permisos'])->middleware('permiso:roles.ver');
     Route::post('roles', [RolController::class, 'store'])->middleware('permiso:roles.gestionar');
     Route::put('roles/{rol}', [RolController::class, 'update'])->middleware('permiso:roles.gestionar');
+    Route::post('roles/{rol}/restablecer', [RolController::class, 'restablecer'])->middleware('permiso:roles.gestionar');
     Route::delete('roles/{rol}', [RolController::class, 'destroy'])->middleware('permiso:roles.gestionar');
 
     Route::get('bitacora', [BitacoraController::class, 'index'])->middleware('permiso:bitacora.ver');
@@ -171,6 +172,9 @@ Route::middleware(['auth:sanctum', 'usuario.activo'])->group(function () {
         Route::post('matriculas/{matricula}/inscripciones', [MatriculaController::class, 'inscribir']);
         Route::delete('inscripciones/{inscripcion}', [MatriculaController::class, 'retirarInscripcion']);
         Route::post('matriculas/{matricula}/finalizar', [MatriculaController::class, 'finalizar']);
+        // Recuperación: volver a cursar en otra oferta una materia reprobada (sin aprobarla no hay certificado)
+        Route::get('matriculas/{matricula}/recuperacion', [MatriculaController::class, 'opcionesRecuperacion']);
+        Route::post('matriculas/{matricula}/recuperacion', [MatriculaController::class, 'recuperar']);
     });
 
     // ------------------------------------------------------------------

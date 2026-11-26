@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Permiso;
 use App\Models\Rol;
 use App\Services\Auditoria;
+use Database\Seeders\RolPermisoSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -73,6 +74,21 @@ class RolController extends Controller
         Auditoria::describir("Actualizó el rol {$rol->nombre}");
 
         return response()->json($rol);
+    }
+
+    /**
+     * Devuelve un rol base a los permisos de la matriz de acceso inicial (RolPermisoSeeder),
+     * quitando lo que se haya marcado o desmarcado después desde esta pantalla.
+     */
+    public function restablecer(Rol $rol): JsonResponse
+    {
+        abort_unless($rol->esBase() && isset(RolPermisoSeeder::MATRIZ[$rol->nombre]), 422, 'Solo los roles base tienen una matriz inicial para restablecer.');
+
+        $ids = Permiso::whereIn('accion', RolPermisoSeeder::MATRIZ[$rol->nombre][1])->pluck('id_permiso')->all();
+        $this->sincronizarPermisos($rol, $ids);
+        Auditoria::describir("Restableció los permisos originales del rol {$rol->nombre}");
+
+        return response()->json(['message' => "El rol {$rol->nombre} volvió a sus permisos originales (".count($ids).').']);
     }
 
     public function destroy(Rol $rol): JsonResponse

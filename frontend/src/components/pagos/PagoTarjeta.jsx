@@ -1,9 +1,9 @@
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import { CircleCheck, LoaderCircle } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import api from '../../api/cliente'
 import { moneda } from '../../utils/formato'
+import { Alerta } from '../ui/Basicos'
 
 // Stripe.js se carga una sola vez por clave publicable.
 const cargados = new Map()
@@ -11,6 +11,45 @@ const stripeDe = (clavePublica) => {
   if (!cargados.has(clavePublica)) cargados.set(clavePublica, loadStripe(clavePublica))
 
   return cargados.get(clavePublica)
+}
+
+/*
+ * Stripe solo permite UNA instancia de Embedded Checkout a la vez, y crearla es asíncrono.
+ * Si la ventana se cierra mientras se crea (o React monta dos veces en desarrollo), la
+ * anterior debe destruirse antes de crear otra: por eso las creaciones van en fila y
+ * siempre se destruye la vigente primero.
+ */
+let enFila = Promise.resolve()
+let vigente = null
+
+function montarCheckout({ clavePublica, clientSecret, onComplete, elemento, control }) {
+  enFila = enFila
+    .then(async () => {
+      if (control.cancelado) return
+      const stripe = await stripeDe(clavePublica)
+      if (vigente) {
+        vigente.destroy()
+        vigente = null
+      }
+      const instancia = await stripe.createEmbeddedCheckoutPage({ clientSecret, onComplete })
+      if (control.cancelado) {
+        instancia.destroy()
+
+        return
+      }
+      vigente = instancia
+      control.instancia = instancia
+      instancia.mount(elemento)
+    })
+    .catch((e) => control.alError?.(e))
+}
+
+function desmontarCheckout(control) {
+  control.cancelado = true
+  if (control.instancia) {
+    control.instancia.destroy()
+    if (vigente === control.instancia) vigente = null
+  }
 }
 
 const CADA_MS = 2000
@@ -23,7 +62,23 @@ const INTENTOS = 60
  */
 export default function PagoTarjeta({ pasarela, idPago, alConfirmar }) {
   const [fase, setFase] = useState('tarjeta') // tarjeta · confirmando · confirmado · demora
-  const opciones = useMemo(() => ({ clientSecret: pasarela.client_secret, onComplete: () => setFase('confirmando') }), [pasarela.client_secret])
+  const [error, setError] = useState(null)
+  const contenedor = useRef(null)
+
+  // Crea el formulario de Stripe al abrir y lo destruye al cerrar (o al cambiar de sesión).
+  useEffect(() => {
+    if (fase !== 'tarjeta' || !contenedor.current) return undefined
+    const control = { cancelado: false, instancia: null, alError: (e) => setError(e?.message ?? 'No se pudo cargar el formulario de Stripe.') }
+    montarCheckout({
+      clavePublica: pasarela.clave_publica,
+      clientSecret: pasarela.client_secret,
+      onComplete: () => setFase('confirmando'),
+      elemento: contenedor.current,
+      control,
+    })
+
+    return () => desmontarCheckout(control)
+  }, [fase, pasarela.clave_publica, pasarela.client_secret])
 
   useEffect(() => {
     if (fase !== 'confirmando') return undefined
@@ -81,12 +136,9 @@ export default function PagoTarjeta({ pasarela, idPago, alConfirmar }) {
           <strong>Modo de prueba:</strong> use la tarjeta 4242 4242 4242 4242, cualquier fecha futura y cualquier CVC. No se cobra dinero real.
         </p>
       )}
+      {error && <Alerta tipo="peligro" className="mb-3">{error} Cierre esta ventana e intente de nuevo.</Alerta>}
       {/* Stripe dibuja su formulario sobre fondo claro: se le da una base blanca también en modo noche */}
-      <div className="overflow-hidden rounded-tema bg-white">
-        <EmbeddedCheckoutProvider stripe={stripeDe(pasarela.clave_publica)} options={opciones}>
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
-      </div>
+      <div ref={contenedor} className="min-h-40 overflow-hidden rounded-tema bg-white" />
     </div>
   )
 }

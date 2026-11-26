@@ -7,7 +7,6 @@ use App\Models\Certificado;
 use App\Models\InscripcionModulo;
 use App\Models\Matricula;
 use App\Models\Mensualidad;
-use App\Models\OfertaModulo;
 use App\Models\Pago;
 use App\Models\Usuario;
 use App\Models\ValidacionRequisito;
@@ -33,7 +32,10 @@ use Illuminate\Support\Str;
  */
 class CertificacionService
 {
-    public function __construct(private readonly DocumentoService $documentos) {}
+    public function __construct(
+        private readonly DocumentoService $documentos,
+        private readonly MatriculaService $matriculas,
+    ) {}
 
     /** Permiso que habilita a validar cada tipo de requisito. */
     public const PERMISOS = [
@@ -56,27 +58,32 @@ class CertificacionService
         ];
     }
 
-    /** Todos los módulos obligatorios de la malla aprobados (nota y asistencia mínimas). */
+    /**
+     * Normas académicas del certificado: TODAS las materias obligatorias aprobadas (y las
+     * optativas que cursó), cada una con nota mínima y asistencia mínima (70 %). Una materia
+     * reprobada cuenta solo si el estudiante la volvió a cursar y la aprobó (recuperación).
+     */
     private function verificarAcademico(Matricula $matricula): array
     {
-        $obligatorios = OfertaModulo::where('id_oferta', $matricula->id_oferta)
-            ->whereHas('mallaModulo', fn ($q) => $q->where('obligatorio', true))
-            ->with('mallaModulo.modulo')->get();
+        $situacion = $this->matriculas->situacionMaterias($matricula);
+        $minimaNota = config('icap.academico.nota_minima_aprobacion');
+        $minimaAsistencia = config('icap.academico.asistencia_minima');
+        $detalle = ["• Normas: nota mínima {$minimaNota} y asistencia mínima {$minimaAsistencia}% en cada materia."];
+        $cumple = $situacion->where('obligatorio', true)->isNotEmpty();
 
-        $inscripciones = $matricula->inscripciones()->get()->keyBy('id_oferta_modulo');
-        $detalle = [];
-        $cumple = $obligatorios->isNotEmpty();
+        foreach ($situacion as $m) {
+            $exigida = $m['obligatorio'] || $m['intentos'] > 0;
+            $recuperada = $m['intentos'] > 1 ? ' (recuperada)' : '';
 
-        foreach ($obligatorios as $modulo) {
-            $inscripcion = $inscripciones->get($modulo->id_oferta_modulo);
-            $nombre = $modulo->mallaModulo->modulo->nombre;
-
-            if ($inscripcion?->estado === InscripcionModulo::APROBADO) {
-                $detalle[] = "✔ {$nombre}: aprobado con {$inscripcion->nota_final} y {$inscripcion->porcentaje_asistencia}% de asistencia";
-            } else {
+            if ($m['estado'] === InscripcionModulo::APROBADO) {
+                $detalle[] = "✔ {$m['materia']}: aprobada{$recuperada} con {$m['nota_final']} y {$m['porcentaje_asistencia']}% de asistencia";
+            } elseif ($exigida) {
                 $cumple = false;
-                $estado = $inscripcion ? Str::lower($inscripcion->estado) : 'no inscrito';
-                $detalle[] = "✘ {$nombre}: {$estado}";
+                $detalle[] = match ($m['estado']) {
+                    InscripcionModulo::REPROBADO => "✘ {$m['materia']}: reprobada (nota {$m['nota_final']}, asistencia {$m['porcentaje_asistencia']}%). Debe recuperarla.",
+                    InscripcionModulo::INSCRITO => "✘ {$m['materia']}: en curso, aún no aprobada",
+                    default => "✘ {$m['materia']}: no cursada",
+                };
             }
         }
 

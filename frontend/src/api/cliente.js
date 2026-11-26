@@ -42,12 +42,22 @@ export const alExpirarSesion = (fn) => {
   alExpirar = fn
 }
 
+// 403: el rol perdió un permiso (el Director cambió la matriz): la sesión recarga su menú.
+let alPerderPermiso = () => {}
+export const alCambiarPermisos = (fn) => {
+  alPerderPermiso = fn
+}
+
 api.interceptors.response.use(
   (respuesta) => respuesta,
   (error) => {
     if (error.response?.status === 401 && sesionLocal.token() && !error.config?.url?.includes('auth/login')) {
       sesionLocal.limpiar()
       alExpirar()
+    }
+
+    if (error.response?.status === 403 && sesionLocal.token() && !error.config?.url?.includes('auth/yo')) {
+      alPerderPermiso()
     }
 
     return Promise.reject(error)

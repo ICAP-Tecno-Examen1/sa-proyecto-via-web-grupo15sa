@@ -26,7 +26,8 @@ El Director puede cambiar esta matriz en *Administración › Roles y permisos* 
 | ofertas.gestionar / docentes.asignar | | | ✔ | | | |
 | **CU3** preinscripciones.propias / expediente.propio / estudios.propios | | | | | | ✔ |
 | preinscripciones.ver | ✔ | ✔ | ✔ | | | |
-| preinscripciones.revisar / expedientes.gestionar / matriculas.gestionar | | ✔ | | | | |
+| preinscripciones.revisar | | ✔ | ✔ | | | |
+| expedientes.gestionar / matriculas.gestionar | | ✔ | | | | |
 | matriculas.ver | ✔ | ✔ | ✔ | ✔ | | |
 | inscripciones.gestionar | | | ✔ | | | |
 | **CU4** aranceles.ver | ✔ | ✔ | | ✔ | | |
@@ -69,4 +70,5 @@ El Director puede cambiar esta matriz en *Administración › Roles y permisos* 
 - **Becas:** el estudiante (`pagos.propios`) la solicita para su matrícula adjuntando el documento que pide la beca; solo el Coordinador Financiero (`becas.asignar`) ve el respaldo, la aprueba (puede ajustar el porcentaje) o la rechaza con motivo. Una beca solicitada no descuenta hasta ser aprobada.
 - **Cuotas por cobrar** (`/cuentas-por-cobrar`, `pagos.ver`): Secretaría, Coordinador Financiero y Director ven quién debe qué cuota y cuándo vence; quien tiene `pagos.registrar` puede cobrar desde ahí.
 - **Pago con tarjeta (Stripe):** iniciarlo (`POST /api/pagos/en-linea`) y la página de regreso `/pago/resultado` exigen `pagos.propios` o `pagos.registrar`; el estado del pago solo lo ve su dueño o quien tenga `pagos.ver`/`pagos.conciliar`. El webhook `POST /api/pagos/stripe/webhook` es público pero solo acepta avisos firmados por Stripe (`Stripe-Signature`).
+- **Restablecer un rol base:** en *Roles y permisos*, el botón «Restablecer originales» (`POST /api/roles/{id}/restablecer`, `roles.gestionar`) devuelve el rol a esta matriz y quita lo marcado después. El seeder solo agrega permisos: no deshace cambios hechos desde la pantalla.
 - El rol Director no puede perder los permisos de usuarios y roles, y no se puede dejar al sistema sin ningún Director activo.

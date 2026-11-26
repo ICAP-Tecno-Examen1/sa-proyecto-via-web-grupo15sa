@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Certificado;
 use App\Models\InscripcionModulo;
 use App\Models\Matricula;
+use App\Models\OfertaModulo;
 use App\Services\Auditoria;
 use App\Services\EvaluacionService;
 use App\Services\MatriculaService;
@@ -88,6 +89,24 @@ class MatriculaController extends Controller
     }
 
     /** Coordinador Académico: el estudiante concluyó todos sus módulos. */
+    /** Materias reprobadas y ofertas vigentes donde el estudiante puede volver a cursarlas. */
+    public function opcionesRecuperacion(Matricula $matricula): JsonResponse
+    {
+        return response()->json($this->matriculas->opcionesRecuperacion($matricula));
+    }
+
+    /** Inscribe al estudiante para recuperar una materia reprobada en otra oferta. */
+    public function recuperar(Request $request, Matricula $matricula): JsonResponse
+    {
+        $datos = $request->validate(['id_oferta_modulo' => ['required', 'integer', Rule::exists('oferta_modulo', 'id_oferta_modulo')]]);
+        $destino = OfertaModulo::with(['oferta', 'mallaModulo.modulo'])->findOrFail($datos['id_oferta_modulo']);
+
+        $this->matriculas->recuperar($matricula, $destino);
+        Auditoria::describir("Inscribió a la matrícula {$matricula->numero_registro} para recuperar «{$destino->mallaModulo->modulo->nombre}» en {$destino->oferta->codigo}");
+
+        return response()->json($this->detalle($matricula), 201);
+    }
+
     public function finalizar(Matricula $matricula): JsonResponse
     {
         $this->matriculas->finalizar($matricula);

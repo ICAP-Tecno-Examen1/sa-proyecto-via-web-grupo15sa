@@ -20,8 +20,10 @@ function Guardia({ definicion }) {
 
   if (auth.cargando) return <Cargando texto="Verificando sesión…" />
 
+  // Al iniciar sesión (o registrarse) siempre se entra primero al panel. Si la persona venía
+  // de otra página (por ejemplo, preinscribirse en un programa), el panel le ofrece volver.
   if (definicion.invitado && auth.autenticado) {
-    return <Navigate to={ubicacion.state?.desde ?? '/panel'} replace />
+    return <Navigate to="/panel" replace state={ubicacion.state?.desde ? { continuar: ubicacion.state.desde } : undefined} />
   }
 
   if (!definicion.publica && !auth.autenticado) {

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\MetodoPagoElectronico;
+use App\Models\Permiso;
 use App\Models\Usuario;
+use Database\Seeders\RolPermisoSeeder;
 use Database\Seeders\UsuarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -133,7 +135,9 @@ class FlujoCompletoTest extends TestCase
         // --- 8. La Secretaria no puede aprobar con expediente incompleto: observa
         $this->como('secretaria')->postJson("/api/preinscripciones/{$idPre}/revisar", ['decision' => 'APROBADA', 'id_arancel' => $plan['id_arancel']])
             ->assertStatus(422);
-        $this->ok($this->como('secretaria')->postJson("/api/preinscripciones/{$idPre}/revisar", ['decision' => 'OBSERVADA', 'observacion' => 'Falta subir sus documentos.']));
+        // El Coordinador Académico también revisa preinscripciones; el Docente no
+        $this->como('docente')->postJson("/api/preinscripciones/{$idPre}/revisar", ['decision' => 'OBSERVADA', 'observacion' => 'Falta subir sus documentos.'])->assertStatus(403);
+        $this->ok($this->como('coord.academico')->postJson("/api/preinscripciones/{$idPre}/revisar", ['decision' => 'OBSERVADA', 'observacion' => 'Falta subir sus documentos.']));
 
         foreach (['CI', 'TITULO', 'FOTOGRAFIA'] as $tipo) {
             $this->ok($this->como('camila')->post('/api/mi-expediente', ['tipo' => $tipo, 'archivo' => UploadedFile::fake()->create("$tipo.pdf", 120, 'application/pdf')]), 201);
@@ -260,6 +264,14 @@ class FlujoCompletoTest extends TestCase
         $this->assertNull(collect($porCobrar['filas'])->firstWhere('id_matricula', $idMatricula));
         $this->ok($this->como('secretaria')->getJson('/api/cuentas-por-cobrar?situacion=vencidas'));
         $this->como('camila')->getJson('/api/cuentas-por-cobrar')->assertStatus(403);
+
+        // Roles: si el Director marca permisos de más a un rol base, puede devolverlo a la matriz original
+        $rolDocente = collect($this->ok($this->como('director')->getJson('/api/roles')))->firstWhere('nombre', 'Docente');
+        $extra = Permiso::where('accion', 'pagos.ver')->value('id_permiso');
+        $this->ok($this->como('director')->putJson("/api/roles/{$rolDocente['id_rol']}", ['nombre' => 'Docente', 'permisos' => [...$rolDocente['permisos'], $extra]]));
+        $this->como('secretaria')->postJson("/api/roles/{$rolDocente['id_rol']}/restablecer")->assertStatus(403);
+        $this->ok($this->como('director')->postJson("/api/roles/{$rolDocente['id_rol']}/restablecer"));
+        $this->assertCount(count(RolPermisoSeeder::MATRIZ['Docente'][1]), collect($this->ok($this->como('director')->getJson('/api/roles')))->firstWhere('nombre', 'Docente')['permisos']);
 
         // --- 15. El docente registra asistencia, evaluaciones y notas en sus dos módulos
         $modulos = $this->ok($this->como('docente')->getJson('/api/docencia/modulos'));

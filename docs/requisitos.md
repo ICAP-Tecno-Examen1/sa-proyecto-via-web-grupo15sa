@@ -32,7 +32,10 @@
 
 ## Reglas de negocio configurables (`backend/config/icap.php`)
 
-- Nota mínima de aprobación **51** y asistencia mínima **80 %** (`ICAP_NOTA_MINIMA`, `ICAP_ASISTENCIA_MINIMA`).
+- Nota mínima de aprobación **51** y asistencia mínima **70 %** en cada materia (`ICAP_NOTA_MINIMA`, `ICAP_ASISTENCIA_MINIMA`).
+- **Finalizar un curso, taller o carrera:** desde la oferta, botón «Finalizar curso» (Coordinador Académico), cuando los docentes cerraron todas sus materias. Finaliza la matrícula de cada estudiante y muestra quién aprobó todo y quién tiene materias por recuperar.
+- **Certificado:** solo con TODAS las materias aprobadas (las obligatorias y las optativas que cursó), cada una con nota mínima y 70 % de asistencia, además de los requisitos financiero y documental.
+- **Materia reprobada:** se **recupera** volviendo a cursarla en otra oferta vigente que la dicte (ficha de la matrícula → «Recuperar»). Sin aprobarla no hay certificado; al aprobarla cuenta para la matrícula original.
 - Nota final = Σ (calificación × ponderación); las ponderaciones deben sumar 100 % para cerrar un módulo.
 - La primera cuota vence a los **7 días** de la matrícula; las siguientes, cada mes.
 - Documentos requeridos del expediente: cédula de identidad, título o certificado de estudios y fotografía.

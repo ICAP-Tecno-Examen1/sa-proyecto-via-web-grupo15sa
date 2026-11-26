@@ -1,9 +1,10 @@
-import { ArrowLeft, Award, Ban, FlagTriangleRight, FolderOpen, Percent, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Award, Ban, FlagTriangleRight, FolderOpen, Percent, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import api from '../../api/cliente'
 import Expediente from '../../components/inscripcion/Expediente'
 import ProgresoAcademico from '../../components/inscripcion/ProgresoAcademico'
+import RecuperarMateria from '../../components/inscripcion/RecuperarMateria'
 import EstadoCuenta from '../../components/pagos/EstadoCuenta'
 import ModalPago from '../../components/pagos/ModalPago'
 import { Alerta, Dato, Estado, Insignia, Pestanas } from '../../components/ui/Basicos'
@@ -35,6 +36,7 @@ export default function MatriculaDetalle() {
   const [procesando, setProcesando] = useState(false)
   const [cuotaAPagar, setCuotaAPagar] = useState(null)
   const [modulosElegidos, setModulosElegidos] = useState([])
+  const [recuperando, setRecuperando] = useState(null) // materia reprobada a recuperar
 
   // Solo becas que aplican a esta matrícula (activas y que cubren su curso)
   const becas = useConsulta(accion?.tipo === 'beca' ? '/becas/disponibles' : null, { id_matricula: id })
@@ -119,9 +121,20 @@ export default function MatriculaDetalle() {
                           <Boton variante="secundario" icono={Plus} onClick={() => (setModulosElegidos([]), setAccion({ tipo: 'inscribir' }))}>Inscribir en materias</Boton>
                         </div>
                       )}
-                      <ProgresoAcademico progreso={m.progreso} acciones={auth.puede('inscripciones.gestionar') && m.estado === 'ACTIVA' ? (mod) => mod.estado === 'INSCRITO' && (
-                        <Boton tamano="sm" variante="fantasma" className="text-peligro" icono={Trash2} aria-label="Retirar de la materia" onClick={() => setAccion({ tipo: 'retirar', dato: mod })} />
-                      ) : undefined} />
+                      <ProgresoAcademico progreso={m.progreso} acciones={auth.puede('inscripciones.gestionar') ? (mod) => {
+                        if (mod.estado === 'INSCRITO' && m.estado === 'ACTIVA') {
+                          return <Boton tamano="sm" variante="fantasma" className="text-peligro" icono={Trash2} aria-label="Retirar de la materia" onClick={() => setAccion({ tipo: 'retirar', dato: mod })} />
+                        }
+                        // Reprobada y aún sin recuperar (ni cursándola ni aprobada en otra oferta)
+                        const yaRecupera = m.progreso.modulos.some((x) => x.id_modulo === mod.id_modulo && ['INSCRITO', 'APROBADO'].includes(x.estado))
+                        if (mod.estado === 'REPROBADO' && ['ACTIVA', 'FINALIZADA'].includes(m.estado) && !yaRecupera) {
+                          return <Boton tamano="sm" variante="secundario" icono={RotateCcw} onClick={() => setRecuperando(mod)}>Recuperar</Boton>
+                        }
+
+                        return null
+                      } : undefined} />
+                      <RecuperarMateria idMatricula={id} materia={recuperando} alCerrar={() => setRecuperando(null)}
+                        alTerminar={(data) => (consulta.setDatos(data), avisar.exito('Inscrito para recuperar la materia. Su docente lo verá en su planilla.'))} />
                     </>
                   )}
 

@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { fecha, legible, porcentaje } from '../../utils/formato'
-import { Insignia, Vacio } from '../ui/Basicos'
+import { Alerta, Insignia, Vacio } from '../ui/Basicos'
 
 /**
  * CU3 / CU5 · Avance académico de una matrícula: materias, notas por
@@ -27,6 +27,12 @@ export default function ProgresoAcademico({ progreso, acciones }) {
         </div>
       </div>
 
+      {resumen.materias_pendientes?.length > 0 && resumen.modulos_en_curso === 0 && (
+        <Alerta tipo="alerta" titulo="Le falta aprobar para el certificado">
+          {resumen.materias_pendientes.join(', ')}. Debe aprobar todas las materias (nota mínima y 70 % de asistencia); una materia reprobada se recupera cursándola de nuevo.
+        </Alerta>
+      )}
+
       <ul className="space-y-2">
         {modulos.map((m) => {
           const expandido = abierto === m.id_inscripcion_modulo
@@ -38,7 +44,7 @@ export default function ProgresoAcademico({ progreso, acciones }) {
                   <ChevronDown className={`size-4 shrink-0 transition ${expandido ? 'rotate-180' : ''}`} aria-hidden />
                   <span>
                     <span className="font-bold">{m.orden}. {m.modulo}</span>
-                    <span className="block text-xs text-tenue">{m.horas} h · {m.docentes.join(', ') || 'Docente por designar'}</span>
+                    <span className="block text-xs text-tenue">{m.horas} h · {m.docentes.join(', ') || 'Docente por designar'}{m.es_recuperacion ? ` · recuperación en ${m.oferta}` : ''}</span>
                   </span>
                 </button>
                 <span className="text-right text-xs text-tenue">

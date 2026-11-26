@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Exceptions\ReglaNegocioException;
 use App\Models\Arancel;
 use App\Models\BecaEstudiante;
+use App\Models\Certificado;
 use App\Models\InscripcionModulo;
+use App\Models\MallaModulo;
 use App\Models\Matricula;
 use App\Models\Mensualidad;
 use App\Models\OfertaAcademica;
@@ -14,6 +16,7 @@ use App\Models\Preinscripcion;
 use App\Models\Usuario;
 use App\Models\ValidacionRequisito;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -310,6 +313,105 @@ class MatriculaService
         }
     }
 
+    /**
+     * Situación de cada materia del plan de estudios del estudiante, contando las
+     * recuperaciones (una materia reprobada puede volver a cursarse en otra oferta).
+     *   estado: APROBADO | REPROBADO | INSCRITO (cursándola) | NO_INSCRITO
+     * Para el certificado deben estar APROBADAS todas las obligatorias y todas las
+     * optativas que haya cursado.
+     */
+    public function situacionMaterias(Matricula $matricula): Collection
+    {
+        $plan = MallaModulo::with('modulo')->where('id_malla', $matricula->oferta->id_malla)->orderBy('orden')->get();
+        $intentos = $matricula->inscripciones()->where('estado', '<>', InscripcionModulo::RETIRADO)
+            ->with('ofertaModulo.mallaModulo')->get()
+            ->groupBy(fn (InscripcionModulo $i) => $i->ofertaModulo->mallaModulo->id_modulo);
+
+        return $plan->map(function (MallaModulo $mm) use ($intentos) {
+            $lista = $intentos->get($mm->id_modulo, collect());
+            $aprobada = $lista->firstWhere('estado', InscripcionModulo::APROBADO);
+            $ultima = $aprobada ?? $lista->sortByDesc('id_inscripcion_modulo')->first();
+
+            return [
+                'id_modulo' => $mm->id_modulo,
+                'materia' => $mm->modulo->nombre,
+                'obligatorio' => (bool) $mm->obligatorio,
+                'estado' => match (true) {
+                    (bool) $aprobada => InscripcionModulo::APROBADO,
+                    $lista->contains('estado', InscripcionModulo::INSCRITO) => InscripcionModulo::INSCRITO,
+                    (bool) $ultima => $ultima->estado,
+                    default => 'NO_INSCRITO',
+                },
+                'nota_final' => $ultima?->nota_final,
+                'porcentaje_asistencia' => $ultima?->porcentaje_asistencia,
+                'intentos' => $lista->count(),
+            ];
+        })->values();
+    }
+
+    /** Materias que le faltan para el certificado (obligatorias sin aprobar y optativas cursadas sin aprobar). */
+    public function materiasPendientes(Matricula $matricula): Collection
+    {
+        return $this->situacionMaterias($matricula)->filter(fn ($m) => $m['estado'] !== InscripcionModulo::APROBADO
+            && ($m['obligatorio'] || $m['intentos'] > 0))->values();
+    }
+
+    /** Para cada materia reprobada: ofertas vigentes que la dictan, donde puede volver a cursarla. */
+    public function opcionesRecuperacion(Matricula $matricula): array
+    {
+        return $this->situacionMaterias($matricula)
+            ->where('estado', InscripcionModulo::REPROBADO)
+            ->map(fn ($m) => [
+                ...$m,
+                'opciones' => OfertaModulo::with(['oferta.malla.programa', 'asignaciones.docente'])
+                    ->where('estado', OfertaModulo::ACTIVO)
+                    ->whereHas('mallaModulo', fn ($q) => $q->where('id_modulo', $m['id_modulo']))
+                    ->whereHas('oferta', fn ($q) => $q->whereIn('estado', [OfertaAcademica::PLANIFICADA, OfertaAcademica::ABIERTA, OfertaAcademica::EN_CURSO]))
+                    ->orderBy('fecha_inicio')->get()
+                    ->map(fn (OfertaModulo $om) => [
+                        'id_oferta_modulo' => $om->id_oferta_modulo,
+                        'oferta' => $om->oferta->codigo,
+                        'programa' => $om->oferta->malla->programa->nombre,
+                        'gestion' => $om->oferta->gestion,
+                        'modalidad' => $om->oferta->modalidad,
+                        'fecha_inicio' => $om->fecha_inicio?->format('Y-m-d'),
+                        'fecha_fin' => $om->fecha_fin?->format('Y-m-d'),
+                        'docentes' => $om->asignaciones->where('estado', 'ACTIVO')->map(fn ($a) => $a->docente->nombre_completo)->values(),
+                    ])->values(),
+            ])->values()->all();
+    }
+
+    /**
+     * Recuperación: inscribe al estudiante en una materia que reprobó, dictada en otra oferta
+     * vigente. Su docente la califica como a cualquier inscrito; si la aprueba, cuenta para
+     * el certificado de su matrícula original.
+     */
+    public function recuperar(Matricula $matricula, OfertaModulo $destino): InscripcionModulo
+    {
+        if (! in_array($matricula->estado, [Matricula::ACTIVA, Matricula::FINALIZADA], true)) {
+            throw new ReglaNegocioException('Solo se recuperan materias de matrículas activas o finalizadas.');
+        }
+
+        if ($matricula->certificados()->where('estado', Certificado::EMITIDO)->exists()) {
+            throw new ReglaNegocioException('Esta matrícula ya tiene su certificado emitido.');
+        }
+
+        $materia = $this->situacionMaterias($matricula)->firstWhere('id_modulo', $destino->mallaModulo->id_modulo);
+
+        if (! $materia || $materia['estado'] !== InscripcionModulo::REPROBADO) {
+            throw new ReglaNegocioException('Solo se puede recuperar una materia del plan del estudiante que esté reprobada.');
+        }
+
+        if ($destino->estaCerrado() || ! in_array($destino->oferta->estado, [OfertaAcademica::PLANIFICADA, OfertaAcademica::ABIERTA, OfertaAcademica::EN_CURSO], true)) {
+            throw new ReglaNegocioException('Esa materia ya no se está dictando en la oferta elegida.');
+        }
+
+        return InscripcionModulo::updateOrCreate(
+            ['id_matricula' => $matricula->id_matricula, 'id_oferta_modulo' => $destino->id_oferta_modulo],
+            ['estado' => InscripcionModulo::INSCRITO],
+        );
+    }
+
     /** Quita una inscripción: se elimina si no tiene registros, de lo contrario queda RETIRADO. */
     public function retirarInscripcion(InscripcionModulo $inscripcion): void
     {
@@ -395,20 +497,26 @@ class MatriculaService
             ->sortBy(fn ($i) => $i->ofertaModulo->mallaModulo->orden)
             ->values();
 
-        $modulos = $inscripciones->map(fn (InscripcionModulo $i) => $evaluaciones->detalleInscripcion($i));
+        $modulos = $inscripciones->map(fn (InscripcionModulo $i) => [
+            ...$evaluaciones->detalleInscripcion($i),
+            'id_modulo' => $i->ofertaModulo->mallaModulo->id_modulo,
+            // Cursada en otra oferta para recuperar una materia reprobada
+            'es_recuperacion' => $i->ofertaModulo->id_oferta !== $matricula->id_oferta,
+            'oferta' => $i->ofertaModulo->oferta?->codigo,
+        ]);
 
-        $obligatorios = OfertaModulo::where('id_oferta', $matricula->id_oferta)
-            ->whereHas('mallaModulo', fn ($q) => $q->where('obligatorio', true))->count();
-        $aprobados = $inscripciones->filter(
-            fn ($i) => $i->estado === InscripcionModulo::APROBADO && $i->ofertaModulo->mallaModulo->obligatorio
-        )->count();
+        $situacion = $this->situacionMaterias($matricula);
+        $obligatorios = $situacion->where('obligatorio', true)->count();
+        $aprobados = $situacion->where('obligatorio', true)->where('estado', InscripcionModulo::APROBADO)->count();
 
         return [
             'modulos' => $modulos,
             'resumen' => [
                 'modulos_obligatorios' => $obligatorios,
                 'modulos_aprobados' => $aprobados,
-                'modulos_reprobados' => $inscripciones->where('estado', InscripcionModulo::REPROBADO)->count(),
+                'modulos_reprobados' => $situacion->where('estado', InscripcionModulo::REPROBADO)->count(),
+                // Lo que le falta para el certificado (pendientes y reprobadas sin recuperar)
+                'materias_pendientes' => $this->materiasPendientes($matricula)->pluck('materia')->values(),
                 'modulos_en_curso' => $inscripciones->where('estado', InscripcionModulo::INSCRITO)->count(),
                 'porcentaje_avance' => $obligatorios > 0 ? round($aprobados * 100 / $obligatorios, 1) : 0,
             ],

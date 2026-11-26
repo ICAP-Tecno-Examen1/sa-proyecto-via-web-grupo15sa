@@ -20,7 +20,7 @@ const CONTRATOS = ['POR_MODULO', 'POR_HORAS', 'CONSULTORIA', 'PLANTA'].map((c) =
 const SIGUIENTES = {
   PLANIFICADA: [['ABIERTA', 'Abrir preinscripciones', 'exito'], ['CANCELADA', 'Cancelar oferta', 'peligro']],
   ABIERTA: [['EN_CURSO', 'Iniciar clases', 'primario'], ['PLANIFICADA', 'Volver a planificación', 'secundario'], ['CANCELADA', 'Cancelar oferta', 'peligro']],
-  EN_CURSO: [['FINALIZADA', 'Finalizar oferta', 'primario'], ['ABIERTA', 'Reabrir preinscripciones', 'secundario']],
+  EN_CURSO: [['FINALIZADA', 'Finalizar curso', 'primario'], ['ABIERTA', 'Reabrir preinscripciones', 'secundario']],
   FINALIZADA: [['EN_CURSO', 'Reabrir oferta', 'secundario']],
   CANCELADA: [['PLANIFICADA', 'Reactivar', 'secundario']],
 }
@@ -90,10 +90,16 @@ export default function OfertaDetalle() {
     }
   }
 
+  const [resumenFinal, setResumenFinal] = useState(null)
+
   const confirmarEstado = async () => {
     try {
       const { data } = await api.patch(`/ofertas/${id}/estado`, { estado: cambioEstado[0] })
-      aplicar(data, `La oferta pasó a «${legible(cambioEstado[0])}».`)
+      const r = data.resumen_finalizacion
+      aplicar(data, r
+        ? `Curso finalizado: ${r.finalizados} estudiante(s); ${r.aprobados.length} aprobaron todo y pueden certificarse${r.con_pendientes.length ? `; ${r.con_pendientes.length} con materias por recuperar` : ''}.`
+        : `La oferta pasó a «${legible(cambioEstado[0])}».`)
+      if (r) setResumenFinal(r)
     } catch (e) {
       avisar.error(e)
     } finally {
@@ -241,7 +247,27 @@ export default function OfertaDetalle() {
 
             <Confirmar abierto={Boolean(quitando)} titulo="Quitar docente" mensaje={`¿Quitar a ${quitando?.docente.nombre_completo} de esta materia?`} textoConfirmar="Quitar" alConfirmar={quitarDocente} alCerrar={() => setQuitando(null)} />
             <Confirmar abierto={Boolean(cambioEstado)} titulo={cambioEstado?.[1]} variante={cambioEstado?.[2] === 'peligro' ? 'peligro' : 'primario'} textoConfirmar="Confirmar"
-              mensaje={`La oferta ${o.codigo} pasará al estado «${legible(cambioEstado?.[0])}».`} alConfirmar={confirmarEstado} alCerrar={() => setCambioEstado(null)} />
+              mensaje={cambioEstado?.[0] === 'FINALIZADA'
+                ? `Se cerrará el curso ${o.codigo}: todas sus materias deben estar cerradas por los docentes. Se finalizará la matrícula de cada estudiante. Para el certificado deben tener TODAS las materias aprobadas (nota mínima y 70 % de asistencia); quien reprobó alguna deberá recuperarla.`
+                : `La oferta ${o.codigo} pasará al estado «${legible(cambioEstado?.[0])}».`}
+              alConfirmar={confirmarEstado} alCerrar={() => setCambioEstado(null)} />
+
+            <Modal abierto={Boolean(resumenFinal)} titulo="Curso finalizado" alCerrar={() => setResumenFinal(null)} pie={<Boton onClick={() => setResumenFinal(null)}>Entendido</Boton>}>
+              {resumenFinal && (
+                <div className="space-y-4 text-sm">
+                  <Alerta tipo="exito" titulo={`Aprobaron todo: ${resumenFinal.aprobados.length}`}>
+                    {resumenFinal.aprobados.length ? resumenFinal.aprobados.join(', ') : 'Nadie aprobó todas las materias.'}
+                    <span className="mt-1 block">Siguen en «Requisitos y certificados» para validar y emitir su certificado.</span>
+                  </Alerta>
+                  {resumenFinal.con_pendientes.length > 0 && (
+                    <Alerta tipo="alerta" titulo="Sin certificado hasta recuperar">
+                      <ul className="list-disc pl-5">{resumenFinal.con_pendientes.map((p) => <li key={p.estudiante}>{p.estudiante}: {p.materias.join(', ')}</li>)}</ul>
+                    </Alerta>
+                  )}
+                  {resumenFinal.omitidos.length > 0 && <Alerta titulo="No se finalizaron">{resumenFinal.omitidos.join(' · ')}</Alerta>}
+                </div>
+              )}
+            </Modal>
           </div>
         )}
       </Estado>

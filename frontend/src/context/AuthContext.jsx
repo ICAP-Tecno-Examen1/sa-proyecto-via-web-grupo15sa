@@ -1,5 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import api, { alExpirarSesion, sesionLocal } from '../api/cliente'
+import api, { alCambiarPermisos, alExpirarSesion, sesionLocal } from '../api/cliente'
+
+// El menú y los permisos se vuelven a pedir a la API (los cambia el Director en «Roles y permisos»):
+const REFRESCO_MS = 2 * 60_000 // cada 2 minutos mientras la pestaña está visible
+const MINIMO_ENTRE_REFRESCOS_MS = 15_000
 
 /**
  * Sesión del usuario: datos personales, roles, ROL ACTIVO, permisos y el menú
@@ -36,6 +40,31 @@ export function AuthProvider({ children }) {
     refrescar()
       .catch(() => sesionLocal.limpiar())
       .finally(() => setCargando(false))
+  }, [refrescar])
+
+  /*
+   * Los permisos se aplican en la API en cada petición; el MENÚ se mantiene al día solo:
+   * al volver a la pestaña, cada 2 minutos y cuando la API responde 403 (se quitó un permiso).
+   */
+  useEffect(() => {
+    let ultimo = Date.now()
+    const actualizar = () => {
+      if (!sesionLocal.token() || document.visibilityState !== 'visible' || Date.now() - ultimo < MINIMO_ENTRE_REFRESCOS_MS) return
+      ultimo = Date.now()
+      refrescar().catch(() => {})
+    }
+
+    alCambiarPermisos(actualizar)
+    document.addEventListener('visibilitychange', actualizar)
+    window.addEventListener('focus', actualizar)
+    const id = setInterval(actualizar, REFRESCO_MS)
+
+    return () => {
+      alCambiarPermisos(() => {})
+      document.removeEventListener('visibilitychange', actualizar)
+      window.removeEventListener('focus', actualizar)
+      clearInterval(id)
+    }
   }, [refrescar])
 
   const valor = useMemo(() => {
