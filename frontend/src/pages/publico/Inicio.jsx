@@ -1,11 +1,11 @@
 import { ArrowRight, QrCode } from 'lucide-react'
 import TarjetaOferta from '../../components/catalogo/TarjetaOferta'
-import AsistentePrograma from '../../components/inicio/AsistentePrograma'
 import Cifras from '../../components/inicio/Cifras'
 import Cinta from '../../components/inicio/Cinta'
 import { PORTADA } from '../../components/inicio/contenido'
 import Perfiles from '../../components/inicio/Perfiles'
 import Senda from '../../components/inicio/Senda'
+import LogoPortada from '../../components/inicio/LogoPortada'
 import Logo from '../../components/marca/Logo'
 import { Estado, Vacio } from '../../components/ui/Basicos'
 import Boton from '../../components/ui/Boton'
@@ -24,7 +24,7 @@ export default function Inicio() {
 
   return (
     <>
-      {/* 1. PORTADA: mensaje + asistente interactivo */}
+      {/* 1. PORTADA: mensaje + logo de la institución */}
       <section className="lienzo-marca overflow-hidden">
         <div className="contenedor grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-[1.1fr_1fr] lg:py-24">
           <div className="animar-subir">
@@ -51,7 +51,7 @@ export default function Inicio() {
           </div>
 
           <div className="animar-crecer [animation-delay:0.15s]">
-            <AsistentePrograma ofertas={ofertas} cargando={catalogo.cargando} />
+            <LogoPortada />
           </div>
         </div>
       </section>

@@ -1,6 +1,5 @@
 import {
-  Award, BookOpen, Briefcase, Calculator, Building2, ClipboardCheck, Cpu, GraduationCap, Laptop, MonitorSmartphone,
-  Presentation, QrCode, ShieldCheck, Sparkles, UserRoundCheck, Users, Wallet, Wrench,
+  Award, BookOpen, Building2, ClipboardCheck, GraduationCap, Laptop, Presentation, ShieldCheck, UserRoundCheck, Wallet,
 } from 'lucide-react'
 
 /*
@@ -19,7 +18,7 @@ export const PORTADA = {
   accionPrincipal: 'Empieza hoy',
   accionSecundaria: 'Ver programas',
   garantias: [
-    { Icono: QrCode, texto: 'Pago con QR' },
+    { Icono: Wallet, texto: 'Pago con tarjeta o en caja' },
     { Icono: ShieldCheck, texto: 'Certificado verificable' },
     { Icono: Laptop, texto: 'Trámites 100 % en línea' },
   ],
@@ -32,7 +31,7 @@ export const FRASES_CINTA = ['Cursos', 'Talleres', 'Técnico Auxiliar', 'Técnic
 export const PASOS = [
   { Icono: BookOpen, titulo: 'Elige tu programa', texto: 'Compara costos, duración, modalidad y módulos sin crear una cuenta.' },
   { Icono: UserRoundCheck, titulo: 'Preinscríbete', texto: 'Regístrate y adjunta tu CI, título y fotografía una sola vez.' },
-  { Icono: Wallet, titulo: 'Paga en línea', texto: 'Con QR o subiendo tu comprobante. Tu matrícula se activa al confirmarse.' },
+  { Icono: Wallet, titulo: 'Paga en línea', texto: 'Con tarjeta, transferencia o en caja. Tu matrícula se activa al confirmarse.' },
   { Icono: ClipboardCheck, titulo: 'Aprende y aprueba', texto: 'Consulta tu asistencia, tus notas y el avance de cada módulo.' },
   { Icono: Award, titulo: 'Obtén tu certificado', texto: 'Digital, con código único y QR que cualquier persona puede verificar.' },
 ]
@@ -47,7 +46,7 @@ export const PERFILES = [
     puntos: [
       'Catálogo con costos, horarios y cupos disponibles',
       'Preinscripción en línea y expediente digital',
-      'Pago con QR o comprobante, con plan de cuotas',
+      'Pago con tarjeta, transferencia o en caja, con plan de cuotas',
       'Notas, asistencia y certificados con QR',
     ],
   },
@@ -76,22 +75,3 @@ export const PERFILES = [
     ],
   },
 ]
-
-/** Ícono de cada tipo de programa (asistente de la portada). */
-export const ICONO_TIPO = {
-  CURSO: BookOpen,
-  TALLER: Wrench,
-  TECNICO_AUXILIAR: Calculator,
-  TECNICO_MEDIO: Cpu,
-  TECNICO_SUPERIOR: Briefcase,
-  PROGRAMA_TECNICO: Award,
-}
-
-/** Ícono de cada modalidad. */
-export const ICONO_MODALIDAD = {
-  PRESENCIAL: Users,
-  VIRTUAL: MonitorSmartphone,
-  SEMIPRESENCIAL: Laptop,
-}
-
-export const ICONO_CUALQUIERA = Sparkles
