@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Acceso\PerfilController;
 use App\Http\Controllers\Api\Acceso\RolController;
 use App\Http\Controllers\Api\Acceso\UsuarioController;
 use App\Http\Controllers\Api\Certificacion\CertificacionController;
+use App\Http\Controllers\Api\Certificacion\PlantillaCertificadoController;
 use App\Http\Controllers\Api\Documental\DocumentoController;
 use App\Http\Controllers\Api\Evaluacion\CorreccionController;
 use App\Http\Controllers\Api\Evaluacion\DocenciaController;
@@ -258,6 +259,16 @@ Route::middleware(['auth:sanctum', 'usuario.activo'])->group(function () {
     // ------------------------------------------------------------------
     // CU6 · Requisitos y certificados digitales
     // ------------------------------------------------------------------
+    // Plantilla del certificado (textos, firmantes, firmas y escudos): la edita el Director.
+    // Va antes de certificacion/{matricula} para que «plantilla» no se tome como matrícula.
+    Route::middleware('permiso:certificados.autorizar')->prefix('certificacion/plantilla')->group(function () {
+        Route::get('/', [PlantillaCertificadoController::class, 'show']);
+        Route::put('/', [PlantillaCertificadoController::class, 'update']);
+        Route::get('vista-previa', [PlantillaCertificadoController::class, 'vistaPrevia']);
+        Route::get('imagen/{campo}', [PlantillaCertificadoController::class, 'imagen']);
+        Route::post('imagen/{campo}', [PlantillaCertificadoController::class, 'subirImagen']);
+        Route::delete('imagen/{campo}', [PlantillaCertificadoController::class, 'quitarImagen']);
+    });
     Route::middleware('permiso:certificacion.ver')->group(function () {
         Route::get('certificacion', [CertificacionController::class, 'index']);
         Route::get('certificacion/{matricula}', [CertificacionController::class, 'show']);

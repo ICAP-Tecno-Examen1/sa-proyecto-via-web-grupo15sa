@@ -1,4 +1,4 @@
-import { Download, Search } from 'lucide-react'
+import { Download, FileBadge, Search } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api, { abrirArchivo } from '../../api/cliente'
@@ -39,7 +39,9 @@ export default function Certificacion() {
 
   return (
     <>
-      <EncabezadoPagina titulo="Requisitos y certificados" descripcion="Cada estudiante que finaliza necesita tres validaciones (académica, financiera y documental). Con las tres aprobadas, el Director autoriza la emisión del certificado digital." />
+      <EncabezadoPagina titulo="Requisitos y certificados" descripcion="Cada estudiante que finaliza necesita tres validaciones (académica, financiera y documental). Con las tres aprobadas, el Director autoriza la emisión del certificado digital.">
+        {auth.puede('certificados.autorizar') && <Boton variante="secundario" icono={FileBadge} a="/certificacion/plantilla">Plantilla del certificado</Boton>}
+      </EncabezadoPagina>
 
       <Pestanas activa={pestana} alCambiar={setPestana} pestanas={[{ clave: 'requisitos', etiqueta: 'Validación de requisitos' }, { clave: 'emitidos', etiqueta: 'Certificados emitidos' }]} />
 

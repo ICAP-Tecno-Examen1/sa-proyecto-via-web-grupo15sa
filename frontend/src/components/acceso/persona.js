@@ -13,7 +13,7 @@ export const TIPOS_DOCUMENTO = [
 ]
 
 export const personaInicial = {
-  nombres: '', apellidos: '', tipo_documento: 'CI', ci: '', correo: '', telefono: '', direccion: '', fecha_nacimiento: '',
+  nombres: '', apellidos: '', tipo_documento: 'CI', ci: '', correo: '', telefono: '', direccion: '', fecha_nacimiento: '', lugar_nacimiento: '',
   username: '', password: '', password_confirmation: '',
 }
 
@@ -25,6 +25,7 @@ export const camposPersonales = [
   { nombre: 'correo', etiqueta: 'Correo electrónico', tipo: 'email', requerido: true, autoComplete: 'email' },
   { nombre: 'telefono', etiqueta: 'Teléfono', tipo: 'tel', autoComplete: 'tel' },
   { nombre: 'fecha_nacimiento', etiqueta: 'Fecha de nacimiento', tipo: 'date' },
+  { nombre: 'lugar_nacimiento', etiqueta: 'Lugar de nacimiento', ayuda: 'Ej.: Santa Cruz - Bolivia. Figura en el certificado.' },
   { nombre: 'direccion', etiqueta: 'Dirección' },
 ]
 
@@ -43,6 +44,7 @@ export const reglasPersonales = {
   telefono: [telefono()],
   direccion: [maximo(300)],
   fecha_nacimiento: [fechaPasada()],
+  lugar_nacimiento: [maximo(150)],
 }
 
 /** Al editar, la contraseña es opcional (solo se cambia si se escribe una nueva). */
@@ -60,7 +62,7 @@ export function limpiarPersona(valores) {
     delete datos.password
     delete datos.password_confirmation
   }
-  for (const campo of ['telefono', 'direccion', 'fecha_nacimiento']) if (datos[campo] === '') datos[campo] = null
+  for (const campo of ['telefono', 'direccion', 'fecha_nacimiento', 'lugar_nacimiento']) if (datos[campo] === '') datos[campo] = null
 
   return datos
 }

@@ -32,6 +32,7 @@ class UsuarioService
             'telefono' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+\s()-]{6,30}$/'],
             'direccion' => ['nullable', 'string', 'max:300'],
             'fecha_nacimiento' => ['nullable', 'date', 'before:today', 'after:1920-01-01'],
+            'lugar_nacimiento' => ['nullable', 'string', 'max:150'],
         ];
 
         if ($conAcceso) {
@@ -133,7 +134,7 @@ class UsuarioService
     private function datosPersonales(array $datos): array
     {
         return array_intersect_key($datos, array_flip([
-            'nombres', 'apellidos', 'tipo_documento', 'ci', 'correo', 'telefono', 'direccion', 'fecha_nacimiento',
+            'nombres', 'apellidos', 'tipo_documento', 'ci', 'correo', 'telefono', 'direccion', 'fecha_nacimiento', 'lugar_nacimiento',
         ]));
     }
 }

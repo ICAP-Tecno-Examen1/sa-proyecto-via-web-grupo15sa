@@ -69,6 +69,7 @@ export const RUTAS = [
 
   // --- CU6 · Certificación
   { ruta: '/certificacion', titulo: 'Requisitos y certificados', permiso: 'certificacion.ver', pagina: p(() => import('../pages/certificacion/Certificacion')) },
+  { ruta: '/certificacion/plantilla', titulo: 'Plantilla del certificado', permiso: 'certificados.autorizar', pagina: p(() => import('../pages/certificacion/PlantillaCertificado')) },
   { ruta: '/certificacion/:id', titulo: 'Validación de requisitos', permiso: 'certificacion.ver', pagina: p(() => import('../pages/certificacion/CertificacionDetalle')) },
   { ruta: '/mis-certificados', titulo: 'Mis certificados', permiso: 'certificados.propios', pagina: p(() => import('../pages/certificacion/MisCertificados')) },
 

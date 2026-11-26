@@ -25,6 +25,7 @@ Son los «pequeños ajustes» previstos para conciliación, requisitos y reposit
 | `beca_estudiante` (ajustes) | Solicitudes de beca: `motivo`, `respaldo_url`, `fecha_solicitud`, revisión (`id_usuario_revisor`, `fecha_revision`, `observacion_revision`). Estados: SOLICITADA → ACTIVA / RECHAZADA; ACTIVA → REVOCADA. `beca.requisitos` indica el documento a presentar. Script `sql/08_solicitudes_beca.sql` |
 | `metodo_pago_electronico` | Credenciales de la pasarela Stripe por método de pago (`stripe_clave_secreta`, `stripe_secreto_webhook`, activo). Script `sql/06_stripe.sql`. Las columnas `tc_token_*` y `callback_url` son de PagoFácil y ya no se usan. Antes `pasarela_pago` |
 | `modulo_carrera` | Módulo de una carrera dentro de la malla: agrupa 1 o 2 materias (`modulo`). Script `sql/04_bloques_carrera.sql` |
+| `plantilla_certificado` | Plantilla única (una fila) del certificado / título con el formato oficial del ICAP: encabezados, textos legales (`{documento}` = Título o Certificado, `{horas}`), ciudad, nota al pie, firmantes (nombre, cargo y **imagen de la firma**) y escudos. El sello no se digitaliza. Script `sql/10_plantilla_certificado.sql` |
 | `validacion_requisito` | Validación académica, financiera y documental previa al certificado |
 | `personal_access_tokens` | Sesiones de la API (Laravel Sanctum) |
 
@@ -39,6 +40,7 @@ Son los «pequeños ajustes» previstos para conciliación, requisitos y reposit
 | `metodo_pago` | `tipo` (EFECTIVO, COMPROBANTE, PASARELA) | Cómo se procesa cada método |
 | `pago` | `id_usuario_registro`, `id_usuario_conciliador`, `fecha_conciliacion`, `observacion_conciliacion`, `numero_transaccion`, `pasarela_transaccion_id` | Conciliación y transacción de la pasarela |
 | `correccion_nota` | `observacion_autorizador` | Respuesta del Coordinador Académico |
+| `usuario` | `lugar_nacimiento` | Figura en el certificado («Nacido en … en Santa Cruz - Bolivia») |
 | `documento` | `categoria`, `estado`, `nombre_archivo`, `tipo_mime`, `tamano_bytes`, `id_usuario_registro`, `fecha_registro` | Clasificación, archivo histórico y control de acceso |
 
 ### Decisiones sobre columnas existentes

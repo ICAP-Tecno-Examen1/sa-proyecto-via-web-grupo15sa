@@ -10,9 +10,7 @@ use App\Models\Mensualidad;
 use App\Models\Pago;
 use App\Models\Usuario;
 use App\Models\ValidacionRequisito;
-use App\Support\CodigoQr;
 use App\Support\Frontend;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -35,6 +33,7 @@ class CertificacionService
     public function __construct(
         private readonly DocumentoService $documentos,
         private readonly MatriculaService $matriculas,
+        private readonly CertificadoPdfService $pdf,
     ) {}
 
     /** Permiso que habilita a validar cada tipo de requisito. */
@@ -294,12 +293,8 @@ class CertificacionService
         $datos = $this->datos($certificado);
         $ruta = 'certificados/'.$certificado->codigo_unico.'.pdf';
 
-        $pdf = Pdf::loadView('pdf.certificado', [
-            'c' => $datos,
-            'qr' => CodigoQr::dataUri($certificado->codigo_qr, 260),
-        ])->setPaper('a4', 'landscape');
-
-        Storage::put($ruta, $pdf->output());
+        // Formato oficial con la plantilla vigente (Certificación › Plantilla del certificado).
+        Storage::put($ruta, $this->pdf->certificado($certificado, $datos));
 
         return $ruta;
     }

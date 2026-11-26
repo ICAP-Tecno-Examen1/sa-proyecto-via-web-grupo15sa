@@ -46,7 +46,7 @@ El Director puede cambiar esta matriz en *Administración › Roles y permisos* 
 | requisitos.academico | | | ✔ | | | |
 | requisitos.financiero | | | | ✔ | | |
 | requisitos.documental | | ✔ | | | | |
-| certificados.autorizar | ✔ | | | | | |
+| certificados.autorizar (también edita la plantilla del certificado: textos, firmantes, firmas y escudos) | ✔ | | | | | |
 | certificados.propios | | | | | | ✔ |
 | **CU7** documentos.ver | ✔ | ✔ | ✔ | ✔ | ✔ | |
 | documentos.registrar | | ✔ | ✔ | ✔ | ✔ | |
