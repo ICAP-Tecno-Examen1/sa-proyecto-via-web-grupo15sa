@@ -9,10 +9,15 @@ class Asistencia extends Modelo
     protected $primaryKey = 'id_asistencia';
 
     public const PRESENTE = 'PRESENTE';
+
     public const AUSENTE = 'AUSENTE';
+
     public const TARDANZA = 'TARDANZA';
+
     public const LICENCIA = 'LICENCIA';
+
     public const ESTADOS = [self::PRESENTE, self::AUSENTE, self::TARDANZA, self::LICENCIA];
+
     // Estados que cuentan como asistencia cumplida.
     public const CUENTAN = [self::PRESENTE, self::TARDANZA, self::LICENCIA];
 

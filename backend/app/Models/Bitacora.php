@@ -12,10 +12,15 @@ class Bitacora extends Modelo
     protected $primaryKey = 'id_bitacora';
 
     public const LOGIN_EXITOSO = 'LOGIN_EXITOSO';
+
     public const LOGIN_FALLIDO = 'LOGIN_FALLIDO';
+
     public const LOGOUT = 'LOGOUT';
+
     public const ACCION = 'ACCION';
+
     public const ACCESO_DENEGADO = 'ACCESO_DENEGADO';
+
     public const TIPOS = [self::LOGIN_EXITOSO, self::LOGIN_FALLIDO, self::LOGOUT, self::ACCION, self::ACCESO_DENEGADO];
 
     protected $casts = [

@@ -36,7 +36,8 @@ export default function MatriculaDetalle() {
   const [cuotaAPagar, setCuotaAPagar] = useState(null)
   const [modulosElegidos, setModulosElegidos] = useState([])
 
-  const becas = useConsulta(accion?.tipo === 'beca' ? '/becas' : null)
+  // Solo becas que aplican a esta matrícula (activas y que cubren su curso)
+  const becas = useConsulta(accion?.tipo === 'beca' ? '/becas/disponibles' : null, { id_matricula: id })
   const fBeca = useFormulario({ id_beca: '', porcentaje_aplicado: '' }, { id_beca: [requerido('Seleccione la beca.')], porcentaje_aplicado: [numero(), entre(0.01, 100)] })
 
   const ejecutar = async (peticion, mensaje) => {

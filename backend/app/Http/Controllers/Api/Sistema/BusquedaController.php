@@ -9,6 +9,7 @@ use App\Models\OfertaAcademica;
 use App\Models\Programa;
 use App\Models\Usuario;
 use App\Services\DocumentoService;
+use App\Services\MenuService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -83,7 +84,7 @@ class BusquedaController extends Controller
             }
 
             // Opciones del menú del propio usuario (navegación rápida).
-            $menu = collect(app(\App\Services\MenuService::class)->paraUsuario($usuario))
+            $menu = collect(app(MenuService::class)->paraUsuario($usuario))
                 ->flatMap(fn ($s) => $s['hijos'])
                 ->filter(fn ($h) => str_contains(mb_strtolower($h['etiqueta']), mb_strtolower(trim($datos['q']))))
                 ->take(self::LIMITE)

@@ -9,8 +9,11 @@ class Preinscripcion extends Modelo
     protected $primaryKey = 'id_preinscripcion';
 
     public const PENDIENTE = 'PENDIENTE';
+
     public const OBSERVADA = 'OBSERVADA';
+
     public const APROBADA = 'APROBADA';
+
     public const RECHAZADA = 'RECHAZADA';
 
     protected $casts = [

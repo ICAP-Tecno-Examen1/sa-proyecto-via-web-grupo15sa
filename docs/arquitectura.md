@@ -49,7 +49,7 @@ El cliente **no** tiene reglas de negocio ni accede a la base de datos: solo lla
 | `Exceptions/ReglaNegocioException` | Regla incumplida → respuesta 422 con mensaje en español |
 | `Support/` | Generación de QR y enlaces hacia el cliente |
 | `routes/api.php` | Todas las rutas con el permiso que exige cada una (la matriz de acceso) |
-| `config/icap.php` | Parámetros del negocio: nota mínima, asistencia mínima, documentos requeridos, PagoFácil |
+| `config/icap.php` | Parámetros del negocio: nota mínima, asistencia mínima, documentos requeridos, Stripe |
 | `lang/es/validation.php` | Mensajes de validación en español |
 
 | Módulo de controladores | Caso de uso |
@@ -57,7 +57,7 @@ El cliente **no** tiene reglas de negocio ni accede a la base de datos: solo lla
 | `Acceso` | CU1 usuarios, roles, perfil |
 | `Academico`, `Publico` | CU2 programas, mallas, ofertas, catálogo |
 | `Inscripcion` | CU3 preinscripción, expediente, matrícula |
-| `Finanzas` | CU4 aranceles, becas, pagos, PagoFácil |
+| `Finanzas` | CU4 aranceles, becas, pagos, Stripe (webhook) |
 | `Evaluacion` | CU5 asistencia, notas, correcciones |
 | `Certificacion` | CU6 requisitos y certificados |
 | `Documental` | CU7 repositorio |

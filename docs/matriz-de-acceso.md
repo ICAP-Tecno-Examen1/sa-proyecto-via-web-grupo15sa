@@ -35,7 +35,7 @@ El Director puede cambiar esta matriz en *Administración › Roles y permisos* 
 | pagos.propios | | | | | | ✔ |
 | pagos.registrar | | ✔ | | ✔ | | |
 | pagos.ver | ✔ | ✔ | | ✔ | | |
-| pagos.conciliar | | | | ✔ | | |
+| pagos.conciliar | | ✔ | | ✔ | | |
 | **CU5** docencia.ver | ✔ | | ✔ | | ✔ | |
 | docencia.registrar / correcciones.solicitar | | | | | ✔ | |
 | academico.supervisar | ✔ | | ✔ | | | |
@@ -64,4 +64,9 @@ El Director puede cambiar esta matriz en *Administración › Roles y permisos* 
 - **El Docente y el Estudiante no tienen permisos de categoría en el repositorio**: ven solo los documentos que registraron o los de su propio expediente.
 - **Validar un requisito del certificado exige el permiso de ese requisito**, y el sistema no deja aprobarlo si los datos no lo respaldan (por ejemplo, con deuda pendiente).
 - **Quien solicita una corrección de nota no puede autorizarla.**
+- **Cobro y revisión de pagos:** la Secretaría y el Coordinador Financiero (`pagos.conciliar`) reciben el aviso (campana de la cabecera, `GET /api/pagos/pendientes`) cuando un estudiante elige **Efectivo** (avisa que pagará en caja) o adjunta un **comprobante**; cualquiera de los dos lo cobra o confirma y la cuota queda pagada. Si el propio personal registra un cobro en efectivo, queda confirmado en el acto.
+- **Becas por convenio:** la beca es el convenio (`beca.institucion_financiadora` = institución o empresa). La registra el Coordinador Financiero (`becas.gestionar`) en *Becas › Catálogo*; solo aplica si está ACTIVA y cubre el curso de la matrícula. La asigna directamente (`becas.asignar`) desde *Becas › Becas asignadas* o la ficha de la matrícula.
+- **Becas:** el estudiante (`pagos.propios`) la solicita para su matrícula adjuntando el documento que pide la beca; solo el Coordinador Financiero (`becas.asignar`) ve el respaldo, la aprueba (puede ajustar el porcentaje) o la rechaza con motivo. Una beca solicitada no descuenta hasta ser aprobada.
+- **Cuotas por cobrar** (`/cuentas-por-cobrar`, `pagos.ver`): Secretaría, Coordinador Financiero y Director ven quién debe qué cuota y cuándo vence; quien tiene `pagos.registrar` puede cobrar desde ahí.
+- **Pago con tarjeta (Stripe):** iniciarlo (`POST /api/pagos/en-linea`) y la página de regreso `/pago/resultado` exigen `pagos.propios` o `pagos.registrar`; el estado del pago solo lo ve su dueño o quien tenga `pagos.ver`/`pagos.conciliar`. El webhook `POST /api/pagos/stripe/webhook` es público pero solo acepta avisos firmados por Stripe (`Stripe-Signature`).
 - El rol Director no puede perder los permisos de usuarios y roles, y no se puede dejar al sistema sin ningún Director activo.

@@ -9,6 +9,7 @@ class Documento extends Modelo
     protected $primaryKey = 'id_documento';
 
     public const CATEGORIAS = ['PERSONAL', 'ACADEMICO', 'FINANCIERO', 'INSTITUCIONAL'];
+
     public const TIPOS = [
         'CI' => 'Cédula de identidad',
         'TITULO' => 'Título o certificado de estudios',
@@ -22,7 +23,9 @@ class Documento extends Modelo
         'RESOLUCION' => 'Resolución',
         'OTRO' => 'Otro',
     ];
+
     public const VIGENTE = 'VIGENTE';
+
     public const ARCHIVADO = 'ARCHIVADO';
 
     protected $casts = [

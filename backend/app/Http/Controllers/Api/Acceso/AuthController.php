@@ -11,7 +11,6 @@ use App\Services\MenuService;
 use App\Services\UsuarioService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 /**
  * CU1 · Inicio y cierre de sesión, registro público de estudiantes.
@@ -39,7 +38,7 @@ class AuthController extends Controller
 
         $motivo = match (true) {
             ! $usuario => 'Usuario inexistente',
-            ! $usuario->password_hash || ! Hash::check($datos['password'], $usuario->password_hash) => 'Contraseña incorrecta',
+            ! $usuario->verificarContrasena($datos['password']) => 'Contraseña incorrecta',
             ! $usuario->estaActivo() => 'Cuenta desactivada',
             ! $usuario->rolActivo() => 'Cuenta sin rol asignado',
             default => null,

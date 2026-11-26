@@ -21,7 +21,9 @@ Son los «pequeños ajustes» previstos para conciliación, requisitos y reposit
 | `menu_item` | Menú dinámico: cada opción con el permiso que exige |
 | `bitacora` | Auditoría: logins exitosos y fallidos, IP, acciones, accesos denegados |
 | `visita`, `contador_visita` | Contador de visitas por página |
-| `metodo_pago_electronico` | Credenciales de PagoFácil por método de pago (token service/secret, callback, activo). Antes `pasarela_pago` |
+| `beca` (ajustes) | La beca es el convenio: `institucion_financiadora` = institución o empresa (vacía = propia del ICAP). Se agregan `estado` (ACTIVA/INACTIVA), `requisitos` (documento a presentar) y la tabla `beca_oferta` (cursos que cubre; sin filas = todos). Scripts `sql/08_solicitudes_beca.sql` y `sql/09_becas_estado_y_cursos.sql` |
+| `beca_estudiante` (ajustes) | Solicitudes de beca: `motivo`, `respaldo_url`, `fecha_solicitud`, revisión (`id_usuario_revisor`, `fecha_revision`, `observacion_revision`). Estados: SOLICITADA → ACTIVA / RECHAZADA; ACTIVA → REVOCADA. `beca.requisitos` indica el documento a presentar. Script `sql/08_solicitudes_beca.sql` |
+| `metodo_pago_electronico` | Credenciales de la pasarela Stripe por método de pago (`stripe_clave_secreta`, `stripe_secreto_webhook`, activo). Script `sql/06_stripe.sql`. Las columnas `tc_token_*` y `callback_url` son de PagoFácil y ya no se usan. Antes `pasarela_pago` |
 | `modulo_carrera` | Módulo de una carrera dentro de la malla: agrupa 1 o 2 materias (`modulo`). Script `sql/04_bloques_carrera.sql` |
 | `validacion_requisito` | Validación académica, financiera y documental previa al certificado |
 | `personal_access_tokens` | Sesiones de la API (Laravel Sanctum) |

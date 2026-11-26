@@ -1,0 +1,3 @@
+# Respaldos de bases locales: contienen datos personales, no se suben a git
+*
+!.gitignore

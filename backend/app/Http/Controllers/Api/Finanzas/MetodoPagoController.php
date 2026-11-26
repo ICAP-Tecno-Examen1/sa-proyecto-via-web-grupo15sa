@@ -6,27 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\MetodoPago;
 use App\Models\MetodoPagoElectronico;
 use App\Services\Auditoria;
-use App\Services\PagoFacilService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * CU4 · Métodos de pago y credenciales de PagoFácil (requisito 10), como en el proyecto de referencia.
- * Las credenciales (tcTokenService / tcTokenSecret) se guardan en metodo_pago_electronico y nunca
- * se devuelven al cliente. Solo un método electrónico queda activo a la vez.
+ * CU4 · Métodos de pago y credenciales de la pasarela Stripe (requisito 10).
+ * La clave secreta (sk_…) y el secreto del webhook (whsec_…) se guardan en metodo_pago_electronico
+ * y nunca se devuelven al cliente. Solo un método electrónico queda activo a la vez.
  */
 class MetodoPagoController extends Controller
 {
-    /** Métodos habilitados para pagar (PagoFácil solo si tiene credenciales activas). */
+    /** Métodos habilitados para pagar (la pasarela Stripe solo si tiene credenciales activas). */
     public function disponibles(Request $request): JsonResponse
     {
-        $puedeEfectivo = $request->user()->tienePermiso('pagos.registrar');
-
         return response()->json(
             MetodoPago::where('activo', true)->with('electronico')->orderBy('id_metodo_pago')->get()
-                ->filter(fn (MetodoPago $m) => $m->tipo !== MetodoPago::EFECTIVO || $puedeEfectivo)
                 ->filter(fn (MetodoPago $m) => $m->tipo !== MetodoPago::PASARELA || ($m->electronico?->activo && $m->electronico->tieneCredenciales()))
                 ->map(fn (MetodoPago $m) => $m->only(['id_metodo_pago', 'nombre', 'descripcion', 'tipo']))
                 ->values()
@@ -106,10 +102,14 @@ class MetodoPagoController extends Controller
             'descripcion' => ['nullable', 'string', 'max:1000'],
             'tipo' => ['required', Rule::in(MetodoPago::TIPOS)],
             'activo' => ['required', 'boolean'],
-            // Solo para el tipo PASARELA (PagoFácil)
-            'tc_token_service' => ['nullable', 'string', 'max:2000'],
-            'tc_token_secret' => ['nullable', 'string', 'max:2000'],
-            'callback_url' => ['nullable', 'url', 'max:500'],
+            // Solo para el tipo PASARELA (Stripe). Vacíos = se conservan los guardados.
+            'stripe_clave_secreta' => ['nullable', 'string', 'max:500', 'regex:/^(sk|rk)_(test|live)_[A-Za-z0-9]+$/'],
+            'stripe_secreto_webhook' => ['nullable', 'string', 'max:500', 'regex:/^whsec_[A-Za-z0-9]+$/'],
+            'stripe_clave_publica' => ['nullable', 'string', 'max:500', 'regex:/^pk_(test|live)_[A-Za-z0-9]+$/'],
+        ], [
+            'stripe_clave_publica.regex' => 'La clave publicable de Stripe empieza con pk_test_ (modo prueba) o pk_live_ (modo real).',
+            'stripe_clave_secreta.regex' => 'La clave secreta de Stripe empieza con sk_test_ (modo prueba) o sk_live_ (modo real).',
+            'stripe_secreto_webhook.regex' => 'El secreto del webhook de Stripe empieza con whsec_.',
         ]);
     }
 
@@ -118,7 +118,7 @@ class MetodoPagoController extends Controller
         return array_intersect_key($datos, array_flip(['nombre', 'descripcion', 'tipo', 'activo']));
     }
 
-    /** Crea, actualiza o elimina las credenciales de PagoFácil según el tipo del método. */
+    /** Crea, actualiza o elimina las credenciales de Stripe según el tipo del método. */
     private function guardarElectronico(MetodoPago $metodo, array $datos): void
     {
         if ($metodo->tipo !== MetodoPago::PASARELA) {
@@ -128,13 +128,11 @@ class MetodoPagoController extends Controller
         }
 
         $electronico = MetodoPagoElectronico::firstOrNew(['id_metodo_pago' => $metodo->id_metodo_pago]);
-        $electronico->callback_url = $datos['callback_url'] ?? null;
 
         // Las credenciales solo se reemplazan cuando se escribe un valor nuevo.
-        foreach (['tc_token_service', 'tc_token_secret'] as $campo) {
+        foreach (['stripe_clave_secreta', 'stripe_secreto_webhook', 'stripe_clave_publica'] as $campo) {
             if (filled($datos[$campo] ?? null)) {
-                PagoFacilService::olvidarToken($electronico->getOriginal($campo));
-                $electronico->{$campo} = $datos[$campo];
+                $electronico->{$campo} = trim($datos[$campo]);
             }
         }
 
@@ -142,7 +140,7 @@ class MetodoPagoController extends Controller
         $electronico->activo = $electronico->tieneCredenciales();
         $electronico->save();
 
-        // Solo un método electrónico activo a la vez: es el que usa el servicio de PagoFácil.
+        // Solo un método electrónico activo a la vez: es el que usa el servicio de Stripe.
         if ($electronico->activo) {
             MetodoPagoElectronico::where('id_metodo_pago', '<>', $electronico->id_metodo_pago)->update(['activo' => false]);
         }
@@ -153,10 +151,14 @@ class MetodoPagoController extends Controller
         return [
             ...$m->only(['id_metodo_pago', 'nombre', 'descripcion', 'tipo', 'activo', 'pagos_count']),
             'electronico' => $m->electronico ? [
-                'callback_url' => $m->electronico->callback_url,
                 'activo' => $m->electronico->activo,
                 'tiene_credenciales' => $m->electronico->tieneCredenciales(),
+                'tiene_webhook' => filled($m->electronico->secretoWebhook()),
+                'pago_integrado' => $m->electronico->pagoIntegrado(),
+                'modo' => $m->electronico->modo(),
             ] : null,
+            // Dirección que se registra como endpoint en el panel de Stripe (Developers > Webhooks).
+            'url_webhook' => $m->tipo === MetodoPago::PASARELA ? url('/api/pagos/stripe/webhook') : null,
         ];
     }
 }

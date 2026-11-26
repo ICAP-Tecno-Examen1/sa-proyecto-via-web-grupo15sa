@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Arancel;
-use App\Models\Asistencia;
 use App\Models\AsignacionDocente;
+use App\Models\Asistencia;
 use App\Models\Beca;
 use App\Models\BecaEstudiante;
 use App\Models\Matricula;
@@ -26,6 +26,7 @@ use App\Services\UsuarioService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
@@ -344,7 +345,7 @@ class DemoSeeder extends Seeder
     }
 
     /** PDF de una página que hace de archivo escaneado. */
-    private function archivoDemo(string $titulo): \Illuminate\Http\UploadedFile
+    private function archivoDemo(string $titulo): UploadedFile
     {
         static $contenido = [];
         $contenido[$titulo] ??= Pdf::loadHTML('<h2 style="font-family: DejaVu Sans">'.e($titulo).'</h2><p style="font-family: DejaVu Sans">Documento de demostración del sistema ICAP.</p>')->output();
@@ -352,6 +353,6 @@ class DemoSeeder extends Seeder
         $ruta = 'tmp/demo-'.uniqid().'.pdf';
         Storage::put($ruta, $contenido[$titulo]);
 
-        return new \Illuminate\Http\UploadedFile(Storage::path($ruta), 'documento.pdf', 'application/pdf', null, true);
+        return new UploadedFile(Storage::path($ruta), 'documento.pdf', 'application/pdf', null, true);
     }
 }

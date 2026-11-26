@@ -9,9 +9,13 @@ class Matricula extends Modelo
     protected $primaryKey = 'id_matricula';
 
     public const PENDIENTE_PAGO = 'PENDIENTE_PAGO';
+
     public const ACTIVA = 'ACTIVA';
+
     public const FINALIZADA = 'FINALIZADA';
+
     public const ANULADA = 'ANULADA';
+
     public const ESTADOS = [self::PENDIENTE_PAGO, self::ACTIVA, self::FINALIZADA, self::ANULADA];
 
     protected $casts = [

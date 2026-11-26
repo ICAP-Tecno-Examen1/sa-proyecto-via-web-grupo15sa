@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\Evaluacion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Asistencia;
 use App\Models\AsignacionDocente;
+use App\Models\Asistencia;
 use App\Models\Evaluacion;
 use App\Models\InscripcionModulo;
 use App\Models\OfertaModulo;

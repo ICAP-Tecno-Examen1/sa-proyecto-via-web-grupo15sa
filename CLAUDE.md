@@ -55,6 +55,8 @@ Seeded accounts all use password `Icap2026*` (`director`, `secretaria`, `coord.a
 
 Production uses the institutional shared PostgreSQL (tecnoweb), which already contains the group's tables from the first exam. `migrate:fresh` / `db:wipe` would drop them. Only `php artisan migrate` is safe there. Check `DB_HOST` in `backend/.env` before running any destructive DB or test command.
 
+While the shared server is unreachable, `backend/.env` points to a local database (the shared settings are kept commented right below). Every change that must also reach `db_grupo15sa` is logged in `docs/cambios-pendientes-grupo15sa.md`: schema changes go through SQL files + migrations as usual; data fixes are appended (idempotent) to `backend/database/pendientes/grupo15sa.sql`.
+
 ## Backend architecture
 
 Request path: `routes/api.php` → middleware (`auth:sanctum`, `usuario.activo`, `permiso:…`, `RegistrarBitacora`) → controller (validates input) → service (business rules, transactions) → Eloquent model.
@@ -65,7 +67,7 @@ Request path: `routes/api.php` → middleware (`auth:sanctum`, `usuario.activo`,
 - **Errors**: `bootstrap/app.php` forces every exception to render as JSON with a Spanish `message`. Validation messages come from `lang/es/validation.php`.
 - **Links to the SPA** (certificate QR, simulated gateway) must be built with `App\Support\Frontend::url()`, which honours the browser/hash router setting.
 - **Uploaded files** go to the `local` disk (`storage/app/private/`, git-ignored); tests use `Storage::fake('local')`.
-- **Business parameters** (minimum grade, minimum attendance, required documents, upload limits, PagoFácil) live in `config/icap.php`.
+- **Business parameters** (minimum grade, minimum attendance, required documents, upload limits, Stripe) live in `config/icap.php`.
 
 ### RBAC — the access matrix
 
@@ -90,9 +92,11 @@ Migrations only execute the three SQL files in order, so **the SQL is the source
 
 Everything uses `IF NOT EXISTS` so it can run on top of an existing database; migrations have empty `down()` on purpose. State machines for each entity are listed in `docs/base-de-datos.md`.
 
-### Payments (PagoFácil)
+### Payments (Stripe)
 
-`app/Services/PagoFacilService.php` implements login → generate QR → client polling every 5 s → webhook (`POST /api/pagos/pasarela/callback`, authenticated by `PAGO_FACIL_WEBHOOK_SECRET`, idempotent). Credentials are stored per payment method in the `metodo_pago_electronico` table (set from the UI, as in the reference project), not in `.env`. There is no simulated mode: tests fake the PagoFácil API with `Http::fake`.
+`app/Services/StripeService.php` uses Stripe Checkout through the REST API (no SDK, card only via `allowed_payment_method_types`): `POST /api/pagos/en-linea` creates a pending `pago` and a Checkout Session. With a publishable key (`pk_…`) the session is `ui_mode=embedded_page` and the card form is mounted inside `ModalPago` (`PagoTarjeta.jsx`, `@stripe/react-stripe-js`), which then polls the payment status; without it the SPA redirects to Stripe and Stripe returns to `/pago/resultado` (`ResultadoPago.jsx`), which polls `GET /api/pagos/{id}/estado` (that endpoint also asks Stripe for the session as a fallback) → the signed webhook `POST /api/pagos/stripe/webhook` (`Stripe-Signature`, HMAC with the `whsec_…` secret, 5-minute tolerance, idempotent) confirms it. Credentials (`sk_…` secret key, `whsec_…` webhook secret) are stored per payment method in `metodo_pago_electronico` (set from the UI); `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` in `.env` are the fallback. Amounts go to Stripe in cents of `STRIPE_CURRENCY` (default `bob`). Tests fake the Stripe API with `Http::fake` and sign webhooks themselves.
+
+Cash: a student choosing the EFECTIVO method only notifies (pending `pago` for the instalment balance); Secretaría and Coordinador Financiero (`pagos.conciliar`) see it in the header bell (`GET /api/pagos/pendientes`) and in *Pagos y conciliación*, and confirm it when they collect the money. Staff registering cash themselves is confirmed immediately.
 
 Confirming a payment cascades: trigger marks the instalment paid → `MatriculaService` activates the enrolment if it was the initial payment and enrols the student in modules → the receipt is archived in the document repository.
 

@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\MetodoPagoElectronico;
 use App\Models\Usuario;
 use Database\Seeders\UsuarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use App\Models\MetodoPagoElectronico;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -145,9 +145,45 @@ class FlujoCompletoTest extends TestCase
         $idMatricula = $aprobada['matricula']['id_matricula'];
         $this->assertSame('PENDIENTE_PAGO', $aprobada['matricula']['estado']);
 
-        // --- 10. Beca del 30 %
-        $becas = collect($this->ok($this->como('coord.financiero')->getJson('/api/becas')));
-        $this->ok($this->como('coord.financiero')->postJson("/api/matriculas/{$idMatricula}/becas", ['id_beca' => $becas->firstWhere('porcentaje', 30)['id_beca']]));
+        // --- 10a. Beca de convenio con una empresa (la institución va en la propia beca), limitada a esta oferta
+        $nuevaBeca = ['nombre' => 'Convenio Constructora Sur', 'porcentaje' => 25, 'estado' => 'INACTIVA', 'institucion_financiadora' => 'Constructora Sur S.R.L.',
+            'ofertas' => [$idOferta], 'requisitos' => 'Credencial de empleado o carta de la empresa.'];
+        $this->como('secretaria')->postJson('/api/becas', $nuevaBeca)->assertStatus(403);
+        $becaConvenio = $this->ok($this->como('coord.financiero')->postJson('/api/becas', $nuevaBeca), 201);
+        $disponibles = fn () => collect($this->ok($this->como('camila')->getJson("/api/becas/disponibles?id_matricula={$idMatricula}")));
+        $this->assertNull($disponibles()->firstWhere('id_beca', $becaConvenio['id_beca']), 'Una beca inactiva no se ofrece');
+        $this->ok($this->como('coord.financiero')->patchJson("/api/becas/{$becaConvenio['id_beca']}/estado"));
+        $this->assertTrue($disponibles()->firstWhere('id_beca', $becaConvenio['id_beca'])['requiere_respaldo'], 'Activa se ofrece; al ser de una institución exige documento');
+        $this->como('camila')->postJson("/api/matriculas/{$idMatricula}/solicitar-beca", ['id_beca' => $becaConvenio['id_beca']])->assertStatus(422); // sin el documento de la institución
+        $this->ok($this->como('coord.financiero')->patchJson("/api/becas/{$becaConvenio['id_beca']}/estado"));
+        $this->assertNull($disponibles()->firstWhere('id_beca', $becaConvenio['id_beca']), 'Desactivada, la beca ya no se ofrece');
+
+        // --- 10b. Beca del 30 %: la estudiante la solicita con su respaldo y el Coordinador Financiero la revisa y aprueba
+        $beca30 = $disponibles()->firstWhere('porcentaje', 30);
+        $this->assertNotEmpty($beca30['requisitos'], 'Cada beca indica qué documento hay que presentar');
+        $pedir = fn () => $this->como('camila')->post("/api/matriculas/{$idMatricula}/solicitar-beca", [
+            'id_beca' => $beca30['id_beca'], 'motivo' => 'Ingresos familiares bajos.',
+            'respaldo' => UploadedFile::fake()->create('informe-socioeconomico.pdf', 90, 'application/pdf'),
+        ]);
+        $solicitud = $this->ok($pedir(), 201);
+        $this->assertSame('SOLICITADA', $solicitud['estado']);
+        $pedir()->assertStatus(422); // no se duplica mientras está en revisión
+        $this->assertEquals(1000, $this->ok($this->como('camila')->getJson('/api/mis-pagos'))[0]['monto_final'], 'Una beca solicitada todavía no descuenta');
+        $this->assertSame('SOLICITADA', $this->ok($this->como('camila')->getJson('/api/mis-pagos'))[0]['solicitudes_beca'][0]['estado']);
+
+        $this->assertSame(1, $this->ok($this->como('coord.financiero')->getJson('/api/pagos/pendientes'))['becas']);
+        $this->assertNull($this->ok($this->como('secretaria')->getJson('/api/pagos/pendientes'))['becas'], 'La Secretaría no aprueba becas');
+        $idSolicitud = $solicitud['id_beca_estudiante'];
+        $this->como('coord.financiero')->get("/api/becas/solicitudes/{$idSolicitud}/respaldo")->assertOk();
+        $this->como('docente')->get("/api/becas/solicitudes/{$idSolicitud}/respaldo")->assertStatus(403);
+        $this->como('secretaria')->postJson("/api/becas/solicitudes/{$idSolicitud}/aprobar")->assertStatus(403);
+        $this->ok($this->como('coord.financiero')->postJson("/api/becas/solicitudes/{$idSolicitud}/aprobar", ['observacion' => 'Informe verificado.']));
+        $this->assertSame(0, $this->ok($this->como('coord.financiero')->getJson('/api/pagos/pendientes'))['becas']);
+
+        // La matrícula aparece en «Cuotas por cobrar» con su próxima cuota ya rebajada por la beca
+        $deudora = collect($this->ok($this->como('secretaria')->getJson('/api/cuentas-por-cobrar?q=camila'))['filas'])->firstWhere('id_matricula', $idMatricula);
+        $this->assertSame(3, $deudora['cuotas_pendientes']);
+        $this->assertEquals(233.33, $deudora['proxima_cuota']['saldo']);
 
         $misPagos = $this->ok($this->como('camila')->getJson('/api/mis-pagos'));
         $cuotas = $misPagos[0]['cuenta']['cuotas'];
@@ -157,14 +193,18 @@ class FlujoCompletoTest extends TestCase
 
         // --- 11-13. Pago inicial con comprobante; el Coordinador Financiero lo confirma
         $metodos = collect($this->ok($this->como('camila')->getJson('/api/metodos-pago/disponibles')));
-        $this->assertNull($metodos->firstWhere('tipo', 'EFECTIVO'), 'El estudiante no debe ver el método efectivo');
+        $this->assertNotNull($metodos->firstWhere('tipo', 'EFECTIVO'), 'El estudiante puede avisar que pagará en efectivo');
         $pago = $this->ok($this->como('camila')->post('/api/pagos', [
             'id_mensualidad' => $cuotas[0]['id_mensualidad'], 'id_metodo_pago' => $metodos->firstWhere('tipo', 'COMPROBANTE')['id_metodo_pago'],
             'monto' => 233.33, 'referencia' => 'TRX-001', 'parentesco_pagador' => 'Madre', 'pagador' => $pagador,
             'comprobante' => UploadedFile::fake()->create('comprobante.pdf', 80, 'application/pdf'),
         ]), 201);
-        $this->como('secretaria')->postJson("/api/pagos/{$pago['id_pago']}/conciliar", ['decision' => 'CONFIRMADO'])->assertStatus(403);
-        $this->ok($this->como('coord.financiero')->postJson("/api/pagos/{$pago['id_pago']}/conciliar", ['decision' => 'CONFIRMADO']));
+        $this->como('docente')->postJson("/api/pagos/{$pago['id_pago']}/conciliar", ['decision' => 'CONFIRMADO'])->assertStatus(403);
+        // El comprobante llega como aviso a la Secretaría y al Coordinador Financiero; cualquiera de los dos lo confirma
+        $this->assertSame(1, $this->ok($this->como('secretaria')->getJson('/api/pagos/pendientes'))['comprobantes']);
+        $this->assertSame(1, $this->ok($this->como('coord.financiero')->getJson('/api/pagos/pendientes'))['comprobantes']);
+        $this->como('camila')->getJson('/api/pagos/pendientes')->assertStatus(403);
+        $this->ok($this->como('secretaria')->postJson("/api/pagos/{$pago['id_pago']}/conciliar", ['decision' => 'CONFIRMADO']));
 
         // --- 13-14. Matrícula activa e inscripción automática en los módulos obligatorios
         $detalle = $this->ok($this->como('secretaria')->getJson("/api/matriculas/{$idMatricula}"));
@@ -172,26 +212,54 @@ class FlujoCompletoTest extends TestCase
         $this->assertSame('PAGADA', $detalle['cuenta']['cuotas'][0]['estado']);
         $this->assertCount(2, $detalle['progreso']['modulos']);
 
-        // --- PagoFácil para la segunda cuota: API simulada con Http::fake (mismo camino que en producción)
-        MetodoPagoElectronico::query()->update(['tc_token_service' => 'svc-prueba', 'tc_token_secret' => 'sec-prueba', 'activo' => true]);
+        // --- Stripe para la segunda cuota: API simulada con Http::fake (mismo camino que en producción)
+        MetodoPagoElectronico::query()->update(['stripe_clave_secreta' => 'sk_test_prueba', 'stripe_secreto_webhook' => 'whsec_prueba', 'activo' => true]);
         Http::fake([
-            '*/login' => Http::response(['accessToken' => 'token-prueba']),
-            '*/generate-qr' => Http::response(['values' => ['transactionId' => 555001, 'qrImage' => 'iVBORw0KGgo=', 'expirationDate' => '2026-12-31']]),
-            '*/query-transaction' => Http::response(['values' => ['paymentStatus' => 1]]),
+            'api.stripe.com/v1/checkout/sessions/*' => Http::response(['id' => 'cs_test_icap', 'payment_status' => 'unpaid', 'status' => 'open']),
+            'api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_test_icap', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_icap']),
         ]);
-        $qr = $this->ok($this->como('camila')->postJson('/api/pagos/qr', ['id_mensualidad' => $cuotas[1]['id_mensualidad'], 'pagador' => $pagador]), 201);
-        $this->assertStringStartsWith('data:image/png;base64,', $qr['qr']['imagen']);
-        $this->app['auth']->forgetGuards();
-        $this->withHeaders(['Authorization' => ''])->postJson('/api/pagos/pagofacil/callback?token=incorrecto', ['PedidoID' => $qr['qr']['numero_transaccion'], 'Estado' => 2])->assertStatus(403);
-        $this->ok($this->postJson('/api/pagos/pagofacil/callback?token='.config('icap.pagofacil.webhook_secret'), ['PedidoID' => $qr['qr']['numero_transaccion'], 'Estado' => 2]));
-        $this->assertSame('CONFIRMADO', $this->ok($this->como('camila')->getJson("/api/pagos/{$qr['pago']['id_pago']}/estado"))['estado']);
+        $enLinea = $this->ok($this->como('camila')->postJson('/api/pagos/en-linea', ['id_mensualidad' => $cuotas[1]['id_mensualidad'], 'pagador' => $pagador]), 201);
+        $this->assertStringStartsWith('https://checkout.stripe.com/', $enLinea['pasarela']['url']);
+        $this->assertSame('PRUEBA', $enLinea['pasarela']['modo']);
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/checkout/sessions')
+            && $r['line_items'][0]['price_data']['unit_amount'] === (int) round($enLinea['pasarela']['monto'] * 100)
+            && $r->hasHeader('Authorization', 'Bearer sk_test_prueba'));
+        // Mientras Stripe no confirme, el pago sigue pendiente
+        $this->assertSame('PENDIENTE', $this->ok($this->como('camila')->getJson("/api/pagos/{$enLinea['pago']['id_pago']}/estado"))['estado']);
 
-        // Tercera cuota en efectivo, registrada por la Secretaria
-        $efectivo = collect($this->ok($this->como('secretaria')->getJson('/api/metodos-pago/disponibles')))->firstWhere('tipo', 'EFECTIVO');
-        $pago3 = $this->ok($this->como('secretaria')->postJson('/api/pagos', [
-            'id_mensualidad' => $cuotas[2]['id_mensualidad'], 'id_metodo_pago' => $efectivo['id_metodo_pago'], 'monto' => $cuotas[2]['monto_final'], 'pagador' => $pagador,
+        // Webhook firmado como lo firma Stripe (HMAC-SHA256 de "t.cuerpo" con whsec_…)
+        $evento = json_encode(['type' => 'checkout.session.completed', 'data' => ['object' => [
+            'id' => 'cs_test_icap', 'payment_status' => 'paid', 'payment_intent' => 'pi_test_icap',
+            'client_reference_id' => $enLinea['pago']['numero_transaccion'], 'metadata' => ['id_pago' => (string) $enLinea['pago']['id_pago']],
+        ]]]);
+        $webhook = function (string $secreto) use ($evento) {
+            $this->app['auth']->forgetGuards(); // el webhook llega sin sesión
+            $marca = time();
+
+            return $this->call('POST', '/api/pagos/stripe/webhook', [], [], [],
+                ['CONTENT_TYPE' => 'application/json', 'HTTP_STRIPE_SIGNATURE' => "t={$marca},v1=".hash_hmac('sha256', "{$marca}.{$evento}", $secreto)], $evento);
+        };
+        $webhook('whsec_falso')->assertStatus(400);
+        $webhook('whsec_prueba')->assertOk();
+        $webhook('whsec_prueba')->assertOk(); // repetido: idempotente
+        $this->assertSame('CONFIRMADO', $this->ok($this->como('camila')->getJson("/api/pagos/{$enLinea['pago']['id_pago']}/estado"))['estado']);
+
+        // Tercera cuota en efectivo: la estudiante avisa que pagará en caja y la Secretaría cobra
+        $efectivo = $metodos->firstWhere('tipo', 'EFECTIVO');
+        $pago3 = $this->ok($this->como('camila')->postJson('/api/pagos', [
+            'id_mensualidad' => $cuotas[2]['id_mensualidad'], 'id_metodo_pago' => $efectivo['id_metodo_pago'], 'monto' => 1, 'pagador' => $pagador,
         ]), 201);
-        $this->ok($this->como('coord.financiero')->postJson("/api/pagos/{$pago3['id_pago']}/conciliar", ['decision' => 'CONFIRMADO']));
+        $this->assertSame('PENDIENTE', $pago3['estado_conciliacion']);
+        $this->assertEquals($cuotas[2]['monto_final'], $pago3['monto'], 'El aviso de efectivo es por el saldo completo de la cuota');
+        $this->assertSame(1, $this->ok($this->como('secretaria')->getJson('/api/pagos/pendientes'))['efectivo']);
+        $this->ok($this->como('secretaria')->postJson("/api/pagos/{$pago3['id_pago']}/conciliar", ['decision' => 'CONFIRMADO']));
+        $this->assertSame(0, $this->ok($this->como('secretaria')->getJson('/api/pagos/pendientes'))['efectivo']);
+
+        // Cuotas por cobrar: con las tres cuotas pagadas, la matrícula ya no figura como deudora
+        $porCobrar = $this->ok($this->como('coord.financiero')->getJson('/api/cuentas-por-cobrar'));
+        $this->assertNull(collect($porCobrar['filas'])->firstWhere('id_matricula', $idMatricula));
+        $this->ok($this->como('secretaria')->getJson('/api/cuentas-por-cobrar?situacion=vencidas'));
+        $this->como('camila')->getJson('/api/cuentas-por-cobrar')->assertStatus(403);
 
         // --- 15. El docente registra asistencia, evaluaciones y notas en sus dos módulos
         $modulos = $this->ok($this->como('docente')->getJson('/api/docencia/modulos'));

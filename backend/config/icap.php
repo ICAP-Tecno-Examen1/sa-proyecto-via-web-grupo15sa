@@ -52,15 +52,18 @@ return [
         'extensiones' => ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
     ],
 
-    // PagoFácil (API MasterQR v2). Las credenciales se administran desde "Métodos de pago"
-    // y se guardan en la tabla metodo_pago_electronico (igual que en el proyecto de referencia); estas
-    // variables solo son los valores iniciales del seeder.
-    'pagofacil' => [
-        'url_base' => env('PAGO_FACIL_URL', 'https://masterqr.pagofacil.com.bo/api/services/v2'),
-        'tc_token_service' => env('PAGO_FACIL_TCTOKEN_SERVICE'),
-        'tc_token_secret' => env('PAGO_FACIL_TCTOKEN_SECRET'),
-        'callback_url' => env('PAGO_FACIL_CALLBACK_URL'),
-        // Secreto que se anexa como ?token=... a la URL de callback para autenticar el webhook.
-        'webhook_secret' => env('PAGO_FACIL_WEBHOOK_SECRET'),
+    // Pasarela de pago en línea: Stripe Checkout (página de pago alojada por Stripe).
+    // Las credenciales se cargan en Finanzas > Métodos de pago; las del .env son el respaldo.
+    'stripe' => [
+        'url_base' => env('STRIPE_API_URL', 'https://api.stripe.com/v1'),
+        'clave_secreta' => env('STRIPE_SECRET_KEY'),
+        'secreto_webhook' => env('STRIPE_WEBHOOK_SECRET'),
+        // Clave publicable (pk_…): permite mostrar el formulario de tarjeta dentro del sistema.
+        // Sin ella el estudiante paga en la página de Stripe y vuelve.
+        'clave_publica' => env('STRIPE_PUBLISHABLE_KEY'),
+        // Código ISO de la moneda en minúsculas (bob = bolivianos).
+        'moneda' => strtolower((string) env('STRIPE_CURRENCY', 'bob')),
+        // Segundos de antigüedad máxima aceptada para la firma de un webhook.
+        'tolerancia_firma' => 300,
     ],
 ];

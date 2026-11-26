@@ -27,7 +27,7 @@ Para ingresar, usen el **usuario** (o el correo `usuario@icap.edu.bo`) y la cont
 2. **`coord.financiero`**: configurar aranceles de la oferta.
 3. **Registrar un estudiante nuevo** desde la página de registro (no hace falta usar `estudiante`).
 4. **`secretaria`**: aprobar la preinscripción (genera matrícula).
-5. **Estudiante**: pagar la primera cuota (QR de PagoFácil o comprobante).
+5. **Estudiante**: pagar la primera cuota (con tarjeta mediante Stripe o con comprobante).
 6. **`coord.financiero`**: confirmar el pago con comprobante.
 7. **`docente`**: registrar asistencia, evaluaciones y notas; cerrar el módulo.
 8. **`director`**: autorizar el certificado y revisar el panel, reportes y bitácora.

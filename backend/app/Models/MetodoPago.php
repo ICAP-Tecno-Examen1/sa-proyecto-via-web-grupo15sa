@@ -8,10 +8,13 @@ class MetodoPago extends Modelo
 
     protected $primaryKey = 'id_metodo_pago';
 
-    // EFECTIVO: lo registra el personal · COMPROBANTE: QR/transferencia con respaldo · PASARELA: QR PagoFácil
+    // EFECTIVO: lo registra el personal · COMPROBANTE: QR/transferencia con respaldo · PASARELA: tarjeta en línea (Stripe)
     public const EFECTIVO = 'EFECTIVO';
+
     public const COMPROBANTE = 'COMPROBANTE';
+
     public const PASARELA = 'PASARELA';
+
     public const TIPOS = [self::EFECTIVO, self::COMPROBANTE, self::PASARELA];
 
     protected $casts = [

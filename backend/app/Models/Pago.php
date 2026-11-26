@@ -9,9 +9,13 @@ class Pago extends Modelo
     protected $primaryKey = 'id_pago';
 
     public const PENDIENTE = 'PENDIENTE';
+
     public const CONFIRMADO = 'CONFIRMADO';
+
     public const OBSERVADO = 'OBSERVADO';
+
     public const RECHAZADO = 'RECHAZADO';
+
     public const ESTADOS = [self::PENDIENTE, self::CONFIRMADO, self::OBSERVADO, self::RECHAZADO];
 
     protected $casts = [

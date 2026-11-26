@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Todo pago nace PENDIENTE y corresponde a una cuota (mensualidad):
  *   - EFECTIVO y COMPROBANTE los revisa el Coordinador Financiero
  *     (CONFIRMADO, OBSERVADO o RECHAZADO).
- *   - PASARELA (QR PagoFácil) se confirma solo, cuando llega el webhook.
+ *   - PASARELA (tarjeta con Stripe) se confirma sola, por el webhook o la consulta a Stripe.
  *
  * Al confirmar: el trigger trg_pago_estado_mensualidad marca la cuota como
  * PAGADA si quedó cubierta, y este servicio activa la matrícula cuando la
@@ -49,11 +49,14 @@ class PagoService
         }
 
         if ($metodo->tipo === MetodoPago::PASARELA) {
-            throw new ReglaNegocioException('Los pagos por QR de la pasarela se generan desde la opción «Pagar con QR».');
+            throw new ReglaNegocioException('Los pagos con tarjeta se inician desde la opción «Pagar con tarjeta» (Stripe).');
         }
 
+        // El estudiante que elige efectivo solo AVISA que pagará en caja: queda pendiente por el
+        // saldo de la cuota hasta que la Secretaría o el Coordinador Financiero lo cobre.
         if ($metodo->tipo === MetodoPago::EFECTIVO && ! $actor->tienePermiso('pagos.registrar')) {
-            throw new ReglaNegocioException('Los pagos en efectivo solo los registra el personal autorizado del ICAP.', 403);
+            $monto = $cuota->saldo();
+            $referencia = $referencia ?: 'Pagará en caja del ICAP';
         }
 
         if ($metodo->tipo === MetodoPago::COMPROBANTE && ! $comprobante) {
@@ -91,7 +94,7 @@ class PagoService
         });
     }
 
-    /** Decisión del Coordinador Financiero sobre un pago pendiente. */
+    /** Decisión de la Secretaría o del Coordinador Financiero sobre un pago pendiente. */
     public function conciliar(Pago $pago, string $decision, ?string $observacion, Usuario $conciliador): Pago
     {
         if ($pago->estado_conciliacion !== Pago::PENDIENTE) {

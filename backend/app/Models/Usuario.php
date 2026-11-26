@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
+use Throwable;
 
 /**
  * Usuario del sistema (tabla usuario). La contraseña se guarda cifrada en
@@ -19,7 +21,9 @@ class Usuario extends Authenticatable
     use HasApiTokens;
 
     public const ACTIVO = 'ACTIVO';
+
     public const INACTIVO = 'INACTIVO';
+
     public const TIPOS_DOCUMENTO = ['CI', 'PASAPORTE', 'CARNET_EXTRANJERO'];
 
     protected $table = 'usuario';
@@ -112,6 +116,37 @@ class Usuario extends Authenticatable
      * Rol con el que el usuario trabaja en esta petición. Si la cabecera
      * X-Rol-Activo no corresponde a uno de sus roles, se usa el primero.
      */
+    /**
+     * Comprueba la contraseña. Las cuentas del primer parcial guardan bcrypt con prefijo
+     * $2a$/$2b$ (generado por otra tecnología) que Laravel rechaza aunque es el mismo
+     * algoritmo: se verifica con password_verify y, si es correcta, se convierte al
+     * formato de Laravel ($2y$) para las siguientes veces.
+     */
+    public function verificarContrasena(string $plana): bool
+    {
+        $hash = (string) $this->password_hash;
+
+        if ($hash === '') {
+            return false;
+        }
+
+        if (preg_match('/^\$2[ab]\$/', $hash)) {
+            if (! password_verify($plana, $hash)) {
+                return false;
+            }
+
+            $this->forceFill(['password_hash' => Hash::make($plana)])->saveQuietly();
+
+            return true;
+        }
+
+        try {
+            return Hash::check($plana, $hash);
+        } catch (Throwable) {
+            return false; // formato desconocido: se trata como contraseña incorrecta, no como error 500
+        }
+    }
+
     public function rolActivo(): ?Rol
     {
         if ($this->rolActivoCache) {

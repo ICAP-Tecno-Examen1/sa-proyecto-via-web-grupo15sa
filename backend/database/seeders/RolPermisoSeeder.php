@@ -47,11 +47,11 @@ class RolPermisoSeeder extends Seeder
         'becas.gestionar' => ['Finanzas', 'Gestionar el catálogo de becas'],
         'becas.asignar' => ['Finanzas', 'Asignar o revocar becas a estudiantes'],
         'metodos_pago.ver' => ['Finanzas', 'Consultar métodos de pago'],
-        'metodos_pago.gestionar' => ['Finanzas', 'Gestionar métodos de pago y la pasarela PagoFácil'],
+        'metodos_pago.gestionar' => ['Finanzas', 'Gestionar métodos de pago y la pasarela Stripe'],
         'pagos.propios' => ['Finanzas', 'Consultar sus deudas y pagar sus cuotas'],
         'pagos.registrar' => ['Finanzas', 'Registrar pagos en efectivo o comprobantes recibidos'],
         'pagos.ver' => ['Finanzas', 'Consultar todos los pagos'],
-        'pagos.conciliar' => ['Finanzas', 'Confirmar, observar o rechazar pagos'],
+        'pagos.conciliar' => ['Finanzas', 'Cobrar pagos en efectivo y confirmar, observar o rechazar pagos'],
         // CU5
         'docencia.ver' => ['Académico', 'Consultar módulos, listas de estudiantes y planillas'],
         'docencia.registrar' => ['Académico', 'Registrar asistencia, evaluaciones y notas de sus módulos'],
@@ -95,7 +95,7 @@ class RolPermisoSeeder extends Seeder
         Rol::SECRETARIA => ['Atiende preinscripciones, matrículas, expedientes y el repositorio documental', [
             'estudiantes.gestionar', 'programas.ver', 'ofertas.ver',
             'preinscripciones.ver', 'preinscripciones.revisar', 'expedientes.gestionar', 'matriculas.ver', 'matriculas.gestionar',
-            'aranceles.ver', 'pagos.registrar', 'pagos.ver',
+            'aranceles.ver', 'pagos.registrar', 'pagos.ver', 'pagos.conciliar',
             'certificacion.ver', 'requisitos.documental',
             'documentos.ver', 'documentos.registrar', 'documentos.gestionar',
             'documentos.personal', 'documentos.academico', 'documentos.financiero', 'documentos.institucional',

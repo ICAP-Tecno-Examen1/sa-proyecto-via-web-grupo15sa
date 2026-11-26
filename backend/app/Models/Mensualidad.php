@@ -9,7 +9,9 @@ class Mensualidad extends Modelo
     protected $primaryKey = 'id_mensualidad';
 
     public const PENDIENTE = 'PENDIENTE';
+
     public const PAGADA = 'PAGADA';
+
     public const ANULADA = 'ANULADA';
 
     protected $casts = [

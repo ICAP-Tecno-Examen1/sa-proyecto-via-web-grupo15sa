@@ -9,7 +9,9 @@ class Certificado extends Modelo
     protected $primaryKey = 'id_certificado';
 
     public const EMITIDO = 'EMITIDO';
+
     public const ANULADO = 'ANULADO';
+
     public const TIPO_APROBACION = 'APROBACION';
 
     protected $casts = [

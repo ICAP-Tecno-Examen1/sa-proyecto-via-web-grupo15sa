@@ -10,11 +10,17 @@ class OfertaAcademica extends Modelo
 
     // PLANIFICADA: en preparación (sin costos) · ABIERTA: recibe preinscripciones
     public const PLANIFICADA = 'PLANIFICADA';
+
     public const ABIERTA = 'ABIERTA';
+
     public const EN_CURSO = 'EN_CURSO';
+
     public const FINALIZADA = 'FINALIZADA';
+
     public const CANCELADA = 'CANCELADA';
+
     public const ESTADOS = [self::PLANIFICADA, self::ABIERTA, self::EN_CURSO, self::FINALIZADA, self::CANCELADA];
+
     public const MODALIDADES = ['PRESENCIAL', 'VIRTUAL', 'SEMIPRESENCIAL'];
 
     protected $casts = [

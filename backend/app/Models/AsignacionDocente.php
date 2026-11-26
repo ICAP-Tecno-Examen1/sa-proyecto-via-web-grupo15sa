@@ -9,7 +9,9 @@ class AsignacionDocente extends Modelo
     protected $primaryKey = 'id_asignacion_docente';
 
     public const ACTIVO = 'ACTIVO';
+
     public const INACTIVO = 'INACTIVO';
+
     public const TIPOS_CONTRATO = ['POR_MODULO', 'POR_HORAS', 'CONSULTORIA', 'PLANTA'];
 
     protected $casts = [

@@ -9,9 +9,13 @@ class Arancel extends Modelo
     protected $primaryKey = 'id_arancel';
 
     public const PAGO_UNICO = 'PAGO_UNICO';
+
     public const MENSUALIDAD = 'MENSUALIDAD';
+
     public const TIPOS_COBRO = [self::PAGO_UNICO, self::MENSUALIDAD];
+
     public const ACTIVO = 'ACTIVO';
+
     public const INACTIVO = 'INACTIVO';
 
     protected $casts = [

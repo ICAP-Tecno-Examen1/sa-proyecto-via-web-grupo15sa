@@ -9,8 +9,11 @@ class InscripcionModulo extends Modelo
     protected $primaryKey = 'id_inscripcion_modulo';
 
     public const INSCRITO = 'INSCRITO';
+
     public const APROBADO = 'APROBADO';
+
     public const REPROBADO = 'REPROBADO';
+
     public const RETIRADO = 'RETIRADO';
 
     protected $casts = [

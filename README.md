@@ -129,7 +129,7 @@ Contraseña de todas: **`Icap2026*`**. Con la base compartida, estas cuentas exi
 4. **Estudiante** (registro desde la web): Catálogo → *Preinscribirme*; Mi expediente → subir CI, título y fotografía.
 5. **Secretaria**: Preinscripciones → aprobar → se genera la matrícula pendiente de pago con sus cuotas.
 6. **Coordinador Financiero**: en la matrícula, pestaña Becas (opcional).
-7. **Estudiante**: Mis pagos → *Pagar ahora* → QR PagoFácil (o comprobante). Con comprobante, el Coordinador Financiero lo confirma en *Pagos y conciliación*.
+7. **Estudiante**: Mis pagos → *Pagar ahora* → tarjeta con Stripe (o comprobante). Con comprobante, el Coordinador Financiero lo confirma en *Pagos y conciliación*.
 8. La matrícula pasa a **Activa** y el estudiante queda inscrito en sus módulos.
 9. **Docente**: Mis módulos → evaluaciones, asistencia, calificaciones → *Cerrar módulo* → *Corregir* una nota.
 10. **Coordinador Académico**: Correcciones de nota → aprobar; Matrículas → *Finalizar programa*.
@@ -137,14 +137,23 @@ Contraseña de todas: **`Icap2026*`**. Con la base compartida, estas cuentas exi
 12. **Director**: *Autorizar y emitir certificado*; luego Panel, Reportes y Bitácora.
 13. **Estudiante**: Mis certificados → descargar PDF; escanear el QR abre la verificación pública.
 
-## Pagos con PagoFácil
+## Pagos con tarjeta (Stripe)
 
-Mismo flujo que el proyecto de referencia del grupo (`login` → `generate-qr` → sondeo cada 5 s → webhook con `Estado = 2`), implementado en [backend/app/Services/PasarelaPagoService.php](backend/app/Services/PasarelaPagoService.php).
+El estudiante paga en la página segura de **Stripe Checkout** y vuelve al sistema, que confirma el pago solo. Está implementado en [backend/app/Services/StripeService.php](backend/app/Services/StripeService.php).
 
-- Para activarlo, en *Finanzas › Métodos de pago › PagoFácil (QR)* cargue `tcTokenService` y `tcTokenSecret` y deje el método activo. La URL de callback debe ser pública: `https://…/backend/public/api/pagos/pasarela/callback`.
-- El webhook exige el secreto `PAGO_FACIL_WEBHOOK_SECRET` (se anexa solo a la URL de callback) y es idempotente.
+1. Cree una cuenta en <https://dashboard.stripe.com> (el **modo de prueba** no cobra dinero real).
+2. *Developers › API keys*: copie la **Secret key** (`sk_test_…`) y la **Publishable key** (`pk_test_…`). Con la publicable, el formulario de la tarjeta aparece **dentro del sistema** (Stripe Embedded Checkout); sin ella, el estudiante paga en la página de Stripe y vuelve.
+3. *Developers › Webhooks › Add endpoint*: URL `https://…/backend/public/api/pagos/stripe/webhook`, evento `checkout.session.completed`. Copie el **Signing secret** (`whsec_…`).
+4. En el sistema, como Coordinador Financiero: *Finanzas › Métodos de pago* → editar **Tarjeta de crédito o débito (Stripe)** → pegue las claves y deje el método activo. (Alternativa: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` y `STRIPE_WEBHOOK_SECRET` en `backend/.env`.)
+5. Pruebe con la tarjeta `4242 4242 4242 4242`, cualquier fecha futura y cualquier CVC.
 
-Las pruebas automáticas simulan la API de PagoFácil; la integración real todavía no se ha probado con credenciales.
+**Solo tarjeta.** En bolivianos Stripe no ofrece QR ni pago en efectivo (sus QR, como Cash App Pay o WeChat, y sus vales de efectivo, como OXXO, son de otros países y monedas). Por eso el estudiante elige entre **Tarjeta (Stripe)** y **Transferencia o QR bancario** (con comprobante); el **Efectivo** se paga en caja y lo registra la Secretaría.
+
+Si PHP en Windows da `cURL error 60` al conectar con Stripe, falta configurar los certificados: en `php.ini`, `curl.cainfo` y `openssl.cafile` deben apuntar a un `cacert.pem` (por ejemplo, el de Git: `C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt`).
+
+En una computadora local Stripe no puede llamar al webhook; igual funciona porque, al volver de Stripe, el sistema consulta el pago directamente. Para probar también el webhook en local: `stripe listen --forward-to localhost:8000/api/pagos/stripe/webhook` (Stripe CLI).
+
+Las pruebas automáticas simulan la API de Stripe con `Http::fake` y firman el webhook como lo hace Stripe.
 
 ## Pruebas
 

@@ -57,7 +57,10 @@ export const RUTAS = [
   { ruta: '/becas', titulo: 'Becas', permiso: 'becas.ver', pagina: p(() => import('../pages/finanzas/Becas')) },
   { ruta: '/metodos-pago', titulo: 'Métodos de pago', permiso: 'metodos_pago.ver', pagina: p(() => import('../pages/finanzas/MetodosPago')) },
   { ruta: '/pagos', titulo: 'Pagos y conciliación', permiso: 'pagos.ver', pagina: p(() => import('../pages/finanzas/Pagos')) },
+  { ruta: '/cuentas-por-cobrar', titulo: 'Cuotas por cobrar', permiso: 'pagos.ver', pagina: p(() => import('../pages/finanzas/CuentasPorCobrar')) },
   { ruta: '/mis-pagos', titulo: 'Mis pagos', permiso: 'pagos.propios', pagina: p(() => import('../pages/finanzas/MisPagos')) },
+  // Regreso desde Stripe Checkout (estudiante o personal que inició el pago)
+  { ruta: '/pago/resultado', titulo: 'Resultado del pago', permiso: 'pagos.propios|pagos.registrar', pagina: p(() => import('../pages/finanzas/ResultadoPago')) },
 
   // --- CU5 · Académico
   { ruta: '/docencia', titulo: 'Materias y calificaciones', permiso: 'docencia.ver', pagina: p(() => import('../pages/evaluacion/Docencia')) },

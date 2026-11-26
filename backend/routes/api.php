@@ -17,7 +17,7 @@ use App\Http\Controllers\Api\Finanzas\ArancelController;
 use App\Http\Controllers\Api\Finanzas\BecaController;
 use App\Http\Controllers\Api\Finanzas\MetodoPagoController;
 use App\Http\Controllers\Api\Finanzas\PagoController;
-use App\Http\Controllers\Api\Finanzas\PagoFacilController;
+use App\Http\Controllers\Api\Finanzas\StripeController;
 use App\Http\Controllers\Api\Inscripcion\ExpedienteController;
 use App\Http\Controllers\Api\Inscripcion\MatriculaController;
 use App\Http\Controllers\Api\Inscripcion\PreinscripcionController;
@@ -60,8 +60,9 @@ Route::prefix('publico')->group(function () {
 Route::get('busqueda', BusquedaController::class)->middleware('throttle:90,1,busqueda');
 Route::post('visitas', [VisitaController::class, 'registrar'])->middleware('throttle:180,1,visitas');
 
-// Webhook de PagoFácil (sin sesión): PagoFácil avisa aquí cuando se confirma un pago QR
-Route::post('pagos/pagofacil/callback', [PagoFacilController::class, 'callback'])->middleware('throttle:120,1,pagofacil');
+// Webhook de Stripe (sin sesión): Stripe avisa aquí cuando se completa un pago con tarjeta.
+// Se autentica con la firma Stripe-Signature. Regístrelo en el panel de Stripe (ver docs).
+Route::post('pagos/stripe/webhook', [StripeController::class, 'webhook'])->middleware('throttle:120,1,stripe');
 
 // ======================================================================
 // RUTAS PROTEGIDAS (token Sanctum + usuario activo)
@@ -183,9 +184,18 @@ Route::middleware(['auth:sanctum', 'usuario.activo'])->group(function () {
     });
 
     Route::get('becas', [BecaController::class, 'index'])->middleware('permiso:becas.ver');
+    // Solicitudes de beca: el estudiante pide con respaldo; el Coordinador Financiero revisa
+    Route::get('becas/disponibles', [BecaController::class, 'disponibles'])->middleware('permiso:pagos.propios|becas.ver');
+    Route::post('matriculas/{matricula}/solicitar-beca', [BecaController::class, 'solicitar'])->middleware('permiso:pagos.propios');
+    Route::get('becas/solicitudes', [BecaController::class, 'solicitudes'])->middleware('permiso:becas.ver|becas.asignar');
+    Route::post('becas/solicitudes/{becaEstudiante}/aprobar', [BecaController::class, 'aprobar'])->middleware('permiso:becas.asignar');
+    Route::post('becas/solicitudes/{becaEstudiante}/rechazar', [BecaController::class, 'rechazar'])->middleware('permiso:becas.asignar');
+    // Respaldo: el controlador verifica que sea del estudiante o que el rol revise becas
+    Route::get('becas/solicitudes/{becaEstudiante}/respaldo', [BecaController::class, 'respaldo'])->whereNumber('becaEstudiante');
     Route::get('becas-asignadas', [BecaController::class, 'asignaciones'])->middleware('permiso:becas.ver');
     Route::middleware('permiso:becas.gestionar')->group(function () {
         Route::post('becas', [BecaController::class, 'store']);
+        Route::patch('becas/{beca}/estado', [BecaController::class, 'cambiarEstado']);
         Route::put('becas/{beca}', [BecaController::class, 'update']);
         Route::delete('becas/{beca}', [BecaController::class, 'destroy']);
     });
@@ -204,13 +214,16 @@ Route::middleware(['auth:sanctum', 'usuario.activo'])->group(function () {
     Route::get('mis-pagos', [PagoController::class, 'mios'])->middleware('permiso:pagos.propios');
     Route::middleware('permiso:pagos.propios|pagos.registrar')->group(function () {
         Route::post('pagos', [PagoController::class, 'store']);
-        Route::post('pagos/qr', [PagoController::class, 'iniciarQr']);
+        Route::post('pagos/en-linea', [PagoController::class, 'iniciarEnLinea']);
     });
     // Estado y comprobante: el controlador verifica que el pago sea propio o que el rol pueda verlo.
     Route::get('pagos/{pago}/estado', [PagoController::class, 'estado'])->whereNumber('pago');
     Route::get('pagos/{pago}/comprobante', [PagoController::class, 'comprobante'])->whereNumber('pago');
 
     Route::get('pagos', [PagoController::class, 'index'])->middleware('permiso:pagos.ver');
+    Route::get('pagos/pendientes', [PagoController::class, 'pendientes'])->middleware('permiso:pagos.conciliar');
+    // Cuotas por cobrar: qué estudiante debe qué cuota y cuándo vence (Secretaría y Coordinador Financiero)
+    Route::get('cuentas-por-cobrar', [PagoController::class, 'porCobrar'])->middleware('permiso:pagos.ver');
     Route::get('pagos/{pago}', [PagoController::class, 'show'])->middleware('permiso:pagos.ver')->whereNumber('pago');
     Route::get('matriculas/{matricula}/cuotas', [PagoController::class, 'cuotasDeMatricula'])->middleware('permiso:pagos.registrar|pagos.ver');
     Route::post('pagos/{pago}/conciliar', [PagoController::class, 'conciliar'])->middleware('permiso:pagos.conciliar')->whereNumber('pago');

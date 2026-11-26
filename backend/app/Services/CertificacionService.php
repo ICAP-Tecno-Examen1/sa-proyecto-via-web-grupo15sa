@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Exceptions\ReglaNegocioException;
 use App\Models\Certificado;
-use App\Models\Documento;
 use App\Models\InscripcionModulo;
 use App\Models\Matricula;
 use App\Models\Mensualidad;

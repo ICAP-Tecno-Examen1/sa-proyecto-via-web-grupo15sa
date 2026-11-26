@@ -9,6 +9,7 @@ class OfertaModulo extends Modelo
     protected $primaryKey = 'id_oferta_modulo';
 
     public const ACTIVO = 'ACTIVO';
+
     public const CERRADO = 'CERRADO';
 
     protected $casts = [

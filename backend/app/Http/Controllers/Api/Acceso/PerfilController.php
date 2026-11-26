@@ -33,7 +33,7 @@ class PerfilController extends Controller
             'password' => ['required', 'string', 'confirmed', 'different:password_actual', UsuarioService::reglaPassword()],
         ]);
 
-        if (! Hash::check($datos['password_actual'], (string) $usuario->password_hash)) {
+        if (! $usuario->verificarContrasena($datos['password_actual'])) {
             return response()->json([
                 'message' => 'La contraseña actual no es correcta.',
                 'errors' => ['password_actual' => ['La contraseña actual no es correcta.']],

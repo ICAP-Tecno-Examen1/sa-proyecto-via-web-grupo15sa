@@ -1,8 +1,8 @@
 import { Eye, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api, { abrirArchivo } from '../../api/cliente'
-import { Alerta, Cargando, Dato, EncabezadoPagina, Insignia, Tarjeta } from '../../components/ui/Basicos'
+import { Alerta, Cargando, Dato, EncabezadoPagina, Insignia, Pestanas, Tarjeta } from '../../components/ui/Basicos'
 import Boton from '../../components/ui/Boton'
 import Campo from '../../components/ui/Campo'
 import Modal from '../../components/ui/Modal'
@@ -20,21 +20,38 @@ const DECISIONES = [
   { valor: 'OBSERVADO', etiqueta: 'Observar (falta información)' },
   { valor: 'RECHAZADO', etiqueta: 'Rechazar el pago' },
 ]
+const DECISIONES_EFECTIVO = [
+  { valor: 'CONFIRMADO', etiqueta: 'Cobrado: registrar el pago en efectivo' },
+  { valor: 'RECHAZADO', etiqueta: 'No se presentó / anular el aviso' },
+]
+
+// Vistas de la pantalla (también se abren desde la campana de avisos: /pagos?vista=efectivo)
+const VISTAS = {
+  todos: { etiqueta: 'Todos', filtro: {} },
+  efectivo: { etiqueta: 'Efectivo por cobrar', filtro: { estado: 'PENDIENTE', tipo: 'EFECTIVO' } },
+  comprobantes: { etiqueta: 'Comprobantes por revisar', filtro: { estado: 'PENDIENTE', tipo: 'COMPROBANTE' } },
+  confirmados: { etiqueta: 'Confirmados', filtro: { estado: 'CONFIRMADO' } },
+}
 
 /**
- * CU4 · Pagos y conciliación.
- * La Secretaria registra pagos; el Coordinador Financiero los confirma,
- * observa o rechaza. Al confirmar, el sistema actualiza la cuota, el saldo
- * y, si es el pago inicial, activa la matrícula.
+ * CU4 · Pagos y conciliación (Secretaría y Coordinador Financiero).
+ *  - Efectivo por cobrar: el estudiante avisó que pagará en caja; al cobrar se confirma.
+ *  - Comprobantes por revisar: transferencias o QR bancario que el estudiante adjuntó.
+ *  - La tarjeta (Stripe) se confirma sola.
+ * Al confirmar, el sistema actualiza la cuota, el saldo y, si es el pago inicial, activa la matrícula.
  */
 export default function Pagos() {
   const auth = useAuth()
   const avisar = useAvisos()
   const concilia = auth.puede('pagos.conciliar')
-  const [filtros, setFiltros] = useState({ q: '', estado: 'PENDIENTE', desde: '', hasta: '' })
+  const [parametros, setParametros] = useSearchParams()
+  const vista = VISTAS[parametros.get('vista')] ? parametros.get('vista') : 'todos'
+  const [filtros, setFiltros] = useState({ q: '', estado: '', desde: '', hasta: '' })
   const [pagina, setPagina] = useState(1)
-  const lista = useConsulta('/pagos', { ...filtros, q: useRetardo(filtros.q), page: pagina })
+  const lista = useConsulta('/pagos', { ...filtros, ...VISTAS[vista].filtro, q: useRetardo(filtros.q), page: pagina })
+  const avisos = useConsulta(concilia ? '/pagos/pendientes' : null)
   const cambiar = (campo) => (valor) => (setFiltros((f) => ({ ...f, [campo]: valor })), setPagina(1))
+  const cambiarVista = (clave) => (setParametros(clave === 'todos' ? {} : { vista: clave }, { replace: true }), setPagina(1))
 
   const [pago, setPago] = useState(null)
   const [registrando, setRegistrando] = useState(false)
@@ -43,21 +60,34 @@ export default function Pagos() {
     observacion: [requeridoSi((v) => v.decision && v.decision !== 'CONFIRMADO', 'Explique el motivo.'), minimo(5), maximo(500)],
   })
 
-  const conciliar = f.enviar(async (valores) => {
-    await api.post(`/pagos/${pago.id_pago}/conciliar`, { decision: valores.decision, observacion: valores.observacion || null })
-    avisar.exito(valores.decision === 'CONFIRMADO' ? 'Pago confirmado: la cuota y la matrícula fueron actualizadas.' : 'Pago conciliado.')
-    setPago(null)
-    lista.recargar()
-  })
-
   const pendiente = pago?.estado_conciliacion === 'PENDIENTE'
   const esPasarela = pago?.metodo.tipo === 'PASARELA'
+  const esEfectivo = pago?.metodo.tipo === 'EFECTIVO'
+
+  const conciliar = f.enviar(async (valores) => {
+    await api.post(`/pagos/${pago.id_pago}/conciliar`, { decision: valores.decision, observacion: valores.observacion || null })
+    avisar.exito(valores.decision === 'CONFIRMADO'
+      ? (esEfectivo ? 'Cobro registrado: la cuota quedó pagada.' : 'Pago confirmado: la cuota y la matrícula fueron actualizadas.')
+      : 'Pago conciliado.')
+    setPago(null)
+    lista.recargar()
+    avisos.recargar()
+  })
+
+  const abrir = (p) => {
+    // En el efectivo lo habitual es «cobrado»: se deja preseleccionado.
+    f.reiniciar({ decision: p.metodo.tipo === 'EFECTIVO' && p.estado_conciliacion === 'PENDIENTE' ? 'CONFIRMADO' : '', observacion: '' })
+    setPago(p)
+  }
 
   return (
     <>
-      <EncabezadoPagina titulo="Pagos y conciliación" descripcion="Pagos registrados por los estudiantes y por el personal. Los pagos por QR de la pasarela se confirman automáticamente.">
+      <EncabezadoPagina titulo="Pagos y conciliación" descripcion="Cobre el efectivo que los estudiantes avisaron y revise los comprobantes. Los pagos con tarjeta (Stripe) se confirman solos.">
         {auth.puede('pagos.registrar') && <Boton icono={Plus} onClick={() => setRegistrando(true)}>Registrar pago</Boton>}
       </EncabezadoPagina>
+
+      <Pestanas activa={vista} alCambiar={cambiarVista}
+        pestanas={Object.entries(VISTAS).map(([clave, v]) => ({ clave, etiqueta: v.etiqueta, contador: clave === 'efectivo' ? avisos.datos?.efectivo : clave === 'comprobantes' ? avisos.datos?.comprobantes : 0 }))} />
 
       <Tarjeta relleno={false}>
         <div className="flex flex-wrap items-end gap-3 border-b p-3">
@@ -65,8 +95,10 @@ export default function Pagos() {
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-tenue" aria-hidden />
             <input type="search" value={filtros.q} onChange={(e) => cambiar('q')(e.target.value)} placeholder="Buscar por estudiante, matrícula o referencia…" aria-label="Buscar pago" className="campo-control pl-9" />
           </div>
-          <Campo tipo="select" nombre="estado" valor={filtros.estado} alCambiar={cambiar('estado')} vacio="Todos los estados" aria-label="Estado de conciliación" className="w-48"
-            opciones={ESTADOS.map((e) => ({ valor: e, etiqueta: legible(e) }))} />
+          {vista === 'todos' && (
+            <Campo tipo="select" nombre="estado" valor={filtros.estado} alCambiar={cambiar('estado')} vacio="Todos los estados" aria-label="Estado de conciliación" className="w-48"
+              opciones={ESTADOS.map((e) => ({ valor: e, etiqueta: legible(e) }))} />
+          )}
           <Campo tipo="date" nombre="desde" etiqueta="Desde" valor={filtros.desde} alCambiar={cambiar('desde')} className="w-40" />
           <Campo tipo="date" nombre="hasta" etiqueta="Hasta" valor={filtros.hasta} alCambiar={cambiar('hasta')} className="w-40" />
         </div>
@@ -76,8 +108,8 @@ export default function Pagos() {
             id="id_pago"
             filas={lista.datos?.data}
             cargando={lista.cargando}
-            vacio="No hay pagos con este filtro."
-            alSeleccionar={(p) => (f.reiniciar(), setPago(p))}
+            vacio={vista === 'efectivo' ? 'No hay pagos en efectivo por cobrar.' : vista === 'comprobantes' ? 'No hay comprobantes por revisar.' : 'No hay pagos con este filtro.'}
+            alSeleccionar={abrir}
             columnas={[
               { clave: 'fecha', titulo: 'Fecha', render: (p) => fechaHora(p.fecha) },
               { clave: 'estudiante', titulo: 'Estudiante', render: (p) => (<><span className="font-semibold">{p.matricula.estudiante}</span><span className="block text-xs text-tenue">{p.matricula.numero_registro} · {p.matricula.programa}</span></>) },
@@ -93,7 +125,16 @@ export default function Pagos() {
       </Tarjeta>
 
       <Modal abierto={Boolean(pago)} titulo={`Pago #${pago?.id_pago ?? ''}`} alCerrar={() => setPago(null)}
-        pie={concilia && pendiente ? <><Boton variante="secundario" onClick={() => setPago(null)}>Cancelar</Boton><Boton onClick={conciliar} cargando={f.enviando}>Registrar conciliación</Boton></> : <Boton onClick={() => setPago(null)}>Cerrar</Boton>}>
+        pie={concilia && pendiente && !esPasarela
+          ? (
+            <>
+              <Boton variante="secundario" onClick={() => setPago(null)}>Cancelar</Boton>
+              <Boton variante={esEfectivo && f.valores.decision === 'CONFIRMADO' ? 'exito' : 'primario'} onClick={conciliar} cargando={f.enviando}>
+                {esEfectivo && f.valores.decision === 'CONFIRMADO' ? `Registrar cobro de ${moneda(pago.monto)}` : 'Registrar conciliación'}
+              </Boton>
+            </>
+          )
+          : <Boton onClick={() => setPago(null)}>Cerrar</Boton>}>
         {pago && (
           <div className="space-y-5">
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -118,16 +159,17 @@ export default function Pagos() {
 
             {pago.tiene_comprobante
               ? <Boton variante="secundario" icono={Eye} onClick={() => abrirArchivo(`/pagos/${pago.id_pago}/comprobante`).catch(avisar.error)}>Ver comprobante adjunto</Boton>
-              : <p className="text-sm text-tenue">{esPasarela ? 'Pago por pasarela QR: no requiere comprobante.' : 'Pago sin comprobante adjunto (efectivo).'}</p>}
+              : <p className="text-sm text-tenue">{esPasarela ? 'Pago con tarjeta (Stripe): no requiere comprobante.' : 'Pago en efectivo: no lleva comprobante.'}</p>}
 
-            {pendiente && esPasarela && <Alerta tipo="alerta">QR generado y aún no pagado. Se confirmará solo cuando la pasarela notifique el pago; si el estudiante desistió, puede rechazarlo.</Alerta>}
+            {pendiente && esPasarela && <Alerta tipo="alerta">El estudiante empezó a pagar con tarjeta y no terminó. Se confirmará solo si completa el pago en Stripe; no requiere acción.</Alerta>}
+            {pendiente && esEfectivo && <Alerta tipo="alerta" titulo="Efectivo por cobrar">El estudiante avisó que pagará {moneda(pago.monto)} en caja. Cuando reciba el dinero, registre el cobro: la cuota quedará pagada.</Alerta>}
 
-            {concilia && pendiente && (
+            {concilia && pendiente && !esPasarela && (
               <form onSubmit={conciliar} noValidate className="space-y-4 rounded-tema border bg-suave p-4">
-                <h3 className="text-sm font-bold">Conciliación</h3>
+                <h3 className="text-sm font-bold">{esEfectivo ? 'Cobro en caja' : 'Revisión del comprobante'}</h3>
                 {f.errorGeneral && <Alerta tipo="peligro">{f.errorGeneral}</Alerta>}
-                <Campo {...f.campo('decision')} tipo="select" etiqueta="Decisión" opciones={DECISIONES} requerido />
-                {f.valores.decision && <Campo {...f.campo('observacion')} tipo="textarea" etiqueta={f.valores.decision === 'CONFIRMADO' ? 'Nota (opcional)' : 'Motivo'} requerido={f.valores.decision !== 'CONFIRMADO'} />}
+                <Campo {...f.campo('decision')} tipo="select" etiqueta="Decisión" opciones={esEfectivo ? DECISIONES_EFECTIVO : DECISIONES} requerido />
+                {f.valores.decision && <Campo {...f.campo('observacion')} tipo="textarea" etiqueta={f.valores.decision === 'CONFIRMADO' ? (esEfectivo ? 'N.º de recibo o nota (opcional)' : 'Nota (opcional)') : 'Motivo'} requerido={f.valores.decision !== 'CONFIRMADO'} />}
               </form>
             )}
           </div>

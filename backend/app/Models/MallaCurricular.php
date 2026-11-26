@@ -9,6 +9,7 @@ class MallaCurricular extends Modelo
     protected $primaryKey = 'id_malla';
 
     public const ACTIVO = 'ACTIVO';
+
     public const INACTIVO = 'INACTIVO';
 
     protected $casts = [

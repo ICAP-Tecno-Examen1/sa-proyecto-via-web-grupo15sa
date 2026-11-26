@@ -9,7 +9,9 @@ class CorreccionNota extends Modelo
     protected $primaryKey = 'id_correccion';
 
     public const PENDIENTE = 'PENDIENTE';
+
     public const APROBADA = 'APROBADA';
+
     public const RECHAZADA = 'RECHAZADA';
 
     protected $casts = [

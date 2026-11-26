@@ -9,12 +9,17 @@ class ValidacionRequisito extends Modelo
     protected $primaryKey = 'id_validacion';
 
     public const ACADEMICO = 'ACADEMICO';
+
     public const FINANCIERO = 'FINANCIERO';
+
     public const DOCUMENTAL = 'DOCUMENTAL';
+
     public const TIPOS = [self::ACADEMICO, self::FINANCIERO, self::DOCUMENTAL];
 
     public const PENDIENTE = 'PENDIENTE';
+
     public const APROBADO = 'APROBADO';
+
     public const OBSERVADO = 'OBSERVADO';
 
     protected $casts = [

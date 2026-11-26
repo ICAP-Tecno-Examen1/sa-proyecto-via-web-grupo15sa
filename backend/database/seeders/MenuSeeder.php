@@ -49,6 +49,7 @@ class MenuSeeder extends Seeder
             ['Becas', '/becas', 'beca', 'becas.ver'],
             ['Métodos de pago', '/metodos-pago', 'tarjeta', 'metodos_pago.ver'],
             ['Pagos y conciliación', '/pagos', 'pago', 'pagos.ver'],
+            ['Cuotas por cobrar', '/cuentas-por-cobrar', 'deuda', 'pagos.ver'],
         ]],
         'Académico' => ['docente', [
             ['Materias y calificaciones', '/docencia', 'docente', 'docencia.ver'],

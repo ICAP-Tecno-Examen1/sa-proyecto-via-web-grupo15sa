@@ -1,6 +1,7 @@
 import { ChevronDown, Eye, LogOut, Menu, UserRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import AvisosPagos from '../components/layout/AvisosPagos'
 import Buscador from '../components/layout/Buscador'
 import ControlesVisuales from '../components/layout/ControlesVisuales'
 import Icono from '../components/layout/Icono'
@@ -97,6 +98,8 @@ function Encabezado({ alAbrirMenu, menuAbierto }) {
         </div>
 
         <ControlesVisuales />
+
+        {auth.autenticado && auth.puede('pagos.conciliar') && <AvisosPagos />}
 
         {auth.autenticado ? (
           <MenuUsuario />

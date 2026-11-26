@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Finanzas;
 
 use App\Http\Controllers\Controller;
+use App\Models\BecaEstudiante;
 use App\Models\Matricula;
 use App\Models\Mensualidad;
 use App\Models\MetodoPago;
@@ -12,7 +13,7 @@ use App\Services\Auditoria;
 use App\Services\DocumentoService;
 use App\Services\MatriculaService;
 use App\Services\PagoService;
-use App\Services\PagoFacilService;
+use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -28,7 +29,7 @@ class PagoController extends Controller
 
     public function __construct(
         private readonly PagoService $pagos,
-        private readonly PagoFacilService $pagofacil,
+        private readonly StripeService $stripe,
         private readonly MatriculaService $matriculas,
     ) {}
 
@@ -44,7 +45,14 @@ class PagoController extends Controller
             ->with([...MatriculaService::RELACIONES, 'becas.beca'])->orderByDesc('id_matricula')->get()
             ->map(fn (Matricula $m) => [
                 ...$this->matriculas->resumen($m),
-                'becas' => $m->becas->where('estado', 'ACTIVA')->map(fn ($b) => ['beca' => $b->beca->nombre, 'porcentaje' => $b->porcentaje_aplicado])->values(),
+                'becas' => $m->becas->where('estado', BecaEstudiante::ACTIVA)->map(fn ($b) => ['beca' => $b->beca->nombre, 'porcentaje' => $b->porcentaje_aplicado])->values(),
+                // Solicitudes en revisión o rechazadas, para que el estudiante sepa en qué quedó
+                'solicitudes_beca' => $m->becas->whereIn('estado', [BecaEstudiante::SOLICITADA, BecaEstudiante::RECHAZADA])->sortByDesc('id_beca_estudiante')
+                    ->map(fn ($b) => [
+                        ...$b->only(['id_beca_estudiante', 'estado', 'porcentaje_aplicado', 'observacion_revision']),
+                        'beca' => $b->beca->nombre,
+                        'fecha_solicitud' => $b->fecha_solicitud?->format('Y-m-d H:i:s'),
+                    ])->values(),
                 'cuenta' => $this->pagos->estadoCuenta($m),
             ]);
 
@@ -55,7 +63,11 @@ class PagoController extends Controller
     // Registro de pagos
     // ------------------------------------------------------------------
 
-    /** Pago con comprobante (estudiante o personal) o en efectivo (solo personal). */
+    /**
+     * Pago con comprobante o en efectivo.
+     *  - Estudiante + efectivo: aviso de que pagará en caja (queda pendiente).
+     *  - Personal que concilia + efectivo: cobró en caja, se confirma en el acto.
+     */
     public function store(Request $request): JsonResponse
     {
         $archivos = config('icap.archivos');
@@ -82,13 +94,24 @@ class PagoController extends Controller
             $request->user(),
         );
 
-        Auditoria::describir("Registró un pago de Bs. {$pago->monto} para la matrícula {$cuota->matricula->numero_registro}");
+        $actor = $request->user();
+        $cobradoEnCaja = $pago->metodoPago->tipo === MetodoPago::EFECTIVO && $actor->tienePermiso('pagos.registrar') && $actor->tienePermiso('pagos.conciliar');
+
+        if ($cobradoEnCaja) {
+            $pago = $this->pagos->confirmar($pago, $actor, 'Cobrado en caja por '.$actor->nombre_completo.'.');
+        }
+
+        Auditoria::describir(match (true) {
+            $cobradoEnCaja => "Cobró en efectivo Bs. {$pago->monto} de la matrícula {$cuota->matricula->numero_registro}",
+            $pago->metodoPago->tipo === MetodoPago::EFECTIVO => "Avisó que pagará en caja Bs. {$pago->monto} de la matrícula {$cuota->matricula->numero_registro}",
+            default => "Registró un pago de Bs. {$pago->monto} para la matrícula {$cuota->matricula->numero_registro}",
+        });
 
         return response()->json($pago->load(self::RELACIONES), 201);
     }
 
-    /** Inicia el pago por QR de PagoFácil y devuelve la imagen del QR. */
-    public function iniciarQr(Request $request): JsonResponse
+    /** Inicia el pago en línea con tarjeta (Stripe Checkout) y devuelve la URL de pago de Stripe. */
+    public function iniciarEnLinea(Request $request): JsonResponse
     {
         $datos = $request->validate([
             'id_mensualidad' => ['required', 'integer', Rule::exists('mensualidad', 'id_mensualidad')],
@@ -96,21 +119,23 @@ class PagoController extends Controller
         ]);
 
         $cuota = $this->cuotaAutorizada($request->user(), (int) $datos['id_mensualidad']);
-        $resultado = $this->pagofacil->iniciar($cuota, $datos['pagador'], $datos['parentesco_pagador'] ?? null, $request->user());
+        $resultado = $this->stripe->iniciar($cuota, $datos['pagador'], $datos['parentesco_pagador'] ?? null, $request->user());
 
-        Auditoria::describir("Generó un QR de pago para la matrícula {$cuota->matricula->numero_registro}");
+        Auditoria::describir("Inició un pago con tarjeta (Stripe) para la matrícula {$cuota->matricula->numero_registro}");
 
         return response()->json($resultado, 201);
     }
 
-    /** Sondeo del cliente mientras se muestra el QR (cada 5 segundos). */
+    /** Sondeo del cliente al volver de Stripe, hasta que el pago se confirma. */
     public function estado(Request $request, Pago $pago): JsonResponse
     {
         $this->autorizarLectura($request->user(), $pago);
-        $pago = $this->pagofacil->consultarEstado($pago);
+        $pago = $this->stripe->consultarEstado($pago);
 
         return response()->json([
             'id_pago' => $pago->id_pago,
+            'id_matricula' => $pago->id_matricula,
+            'monto' => (float) $pago->monto,
             'estado' => $pago->estado_conciliacion,
             'estado_cuota' => $pago->mensualidad?->estado,
             'estado_matricula' => $pago->matricula->estado,
@@ -127,6 +152,7 @@ class PagoController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
             'estado' => ['nullable', Rule::in(Pago::ESTADOS)],
             'id_metodo_pago' => ['nullable', 'integer'],
+            'tipo' => ['nullable', Rule::in(MetodoPago::TIPOS)],
             'desde' => ['nullable', 'date'],
             'hasta' => ['nullable', 'date', 'after_or_equal:desde'],
             'por_pagina' => ['nullable', 'integer', 'between:5,100'],
@@ -135,6 +161,7 @@ class PagoController extends Controller
         $pagina = Pago::with(self::RELACIONES)
             ->when($f['estado'] ?? null, fn ($q, $estado) => $q->where('estado_conciliacion', $estado))
             ->when($f['id_metodo_pago'] ?? null, fn ($q, $id) => $q->where('id_metodo_pago', $id))
+            ->when($f['tipo'] ?? null, fn ($q, $tipo) => $q->whereHas('metodoPago', fn ($m) => $m->where('tipo', $tipo)))
             ->when($f['desde'] ?? null, fn ($q, $d) => $q->whereDate('fecha', '>=', $d))
             ->when($f['hasta'] ?? null, fn ($q, $h) => $q->whereDate('fecha', '<=', $h))
             ->when($f['q'] ?? null, function ($q, $texto) {
@@ -153,6 +180,85 @@ class PagoController extends Controller
         return response()->json($pagina);
     }
 
+    /**
+     * Avisos para la Secretaría y el Coordinador Financiero: efectivo por cobrar y
+     * comprobantes por revisar (los intentos con tarjeta sin terminar no requieren acción).
+     */
+    public function pendientes(Request $request): JsonResponse
+    {
+        $pendientes = fn () => Pago::where('estado_conciliacion', Pago::PENDIENTE)
+            ->whereHas('metodoPago', fn ($q) => $q->whereIn('tipo', [MetodoPago::EFECTIVO, MetodoPago::COMPROBANTE]));
+
+        // Cuotas impagas de matrículas vigentes: informativas (no suman a la campana)
+        $cuotas = fn () => Mensualidad::where('estado', Mensualidad::PENDIENTE)
+            ->whereHas('matricula', fn ($m) => $m->whereIn('estado', [Matricula::PENDIENTE_PAGO, Matricula::ACTIVA]));
+
+        return response()->json([
+            'efectivo' => $pendientes()->whereHas('metodoPago', fn ($q) => $q->where('tipo', MetodoPago::EFECTIVO))->count(),
+            'comprobantes' => $pendientes()->whereHas('metodoPago', fn ($q) => $q->where('tipo', MetodoPago::COMPROBANTE))->count(),
+            // Solo para quien aprueba becas (Coordinador Financiero)
+            'becas' => $request->user()->tienePermiso('becas.asignar') ? BecaEstudiante::where('estado', BecaEstudiante::SOLICITADA)->count() : null,
+            'cuotas_vencidas' => $cuotas()->whereDate('fecha_vencimiento', '<', now()->toDateString())->count(),
+            'cuotas_por_vencer' => $cuotas()->whereBetween('fecha_vencimiento', [now()->toDateString(), now()->addDays(7)->toDateString()])->count(),
+            'recientes' => $pendientes()->with(self::RELACIONES)->orderByDesc('fecha')->limit(6)->get()->map(fn (Pago $p) => $this->formato($p)),
+        ]);
+    }
+
+    /**
+     * Cuotas por cobrar por estudiante: próxima cuota, cuántas debe, cuántas vencieron y
+     * su saldo. Así la Secretaría y el Coordinador Financiero saben quién debe otra cuota.
+     *   situacion = vencidas | por_vencer (próximos 7 días) | (vacío: todas)
+     */
+    public function porCobrar(Request $request): JsonResponse
+    {
+        $f = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'situacion' => ['nullable', Rule::in(['vencidas', 'por_vencer'])],
+        ]);
+        $limite = now()->addDays(7)->toDateString();
+
+        $filas = Matricula::with(MatriculaService::RELACIONES)
+            ->whereIn('estado', [Matricula::PENDIENTE_PAGO, Matricula::ACTIVA])
+            ->whereHas('mensualidades', fn ($q) => $q->where('estado', Mensualidad::PENDIENTE))
+            ->when($f['q'] ?? null, function ($q, $texto) {
+                $patron = '%'.mb_strtolower($texto).'%';
+                $q->where(fn ($w) => $w->whereRaw('LOWER(numero_registro) LIKE ?', [$patron])
+                    ->orWhereHas('usuario', fn ($u) => $u->whereRaw("LOWER(nombres || ' ' || apellidos) LIKE ?", [$patron])->orWhereRaw('LOWER(ci) LIKE ?', [$patron])));
+            })
+            ->get()
+            ->map(function (Matricula $m) {
+                $cuotas = collect($this->pagos->estadoCuenta($m)['cuotas'])->where('saldo', '>', 0)->values();
+
+                return $cuotas->isEmpty() ? null : [
+                    ...$this->matriculas->resumen($m),
+                    'proxima_cuota' => collect($cuotas->first())->except('pagos'),
+                    'cuotas_pendientes' => $cuotas->count(),
+                    'cuotas_vencidas' => $cuotas->where('vencida', true)->count(),
+                    'saldo_pendiente' => round($cuotas->sum('saldo'), 2),
+                    'saldo_vencido' => round($cuotas->where('vencida', true)->sum('saldo'), 2),
+                    'monto_en_revision' => round($cuotas->sum('monto_en_revision'), 2),
+                ];
+            })
+            ->filter()
+            ->filter(fn ($fila) => match ($f['situacion'] ?? null) {
+                'vencidas' => $fila['cuotas_vencidas'] > 0,
+                'por_vencer' => ! $fila['proxima_cuota']['vencida'] && $fila['proxima_cuota']['fecha_vencimiento'] <= $limite,
+                default => true,
+            })
+            ->sortBy(fn ($fila) => $fila['proxima_cuota']['fecha_vencimiento'])
+            ->values();
+
+        return response()->json([
+            'filas' => $filas,
+            'resumen' => [
+                'estudiantes' => $filas->count(),
+                'saldo_pendiente' => round($filas->sum('saldo_pendiente'), 2),
+                'saldo_vencido' => round($filas->sum('saldo_vencido'), 2),
+                'con_vencidas' => $filas->where('cuotas_vencidas', '>', 0)->count(),
+            ],
+        ]);
+    }
+
     public function show(Pago $pago): JsonResponse
     {
         return response()->json($this->formato($pago->load(self::RELACIONES)));
@@ -169,7 +275,7 @@ class PagoController extends Controller
         ]);
     }
 
-    /** Coordinador Financiero: confirma, observa o rechaza. */
+    /** Secretaría o Coordinador Financiero: confirma (o cobra en efectivo), observa o rechaza. */
     public function conciliar(Request $request, Pago $pago): JsonResponse
     {
         $datos = $request->validate([

@@ -44,8 +44,10 @@ DB_SEARCH_PATH=public          # el esquema asignado al grupo
 FRONTEND_URL=https://www.tecnoweb.org.bo/inf513/grupoXXsa/proyecto2
 FRONTEND_ROUTER=hash           # igual que VITE_ROUTER del frontend
 
-PAGO_FACIL_CALLBACK_URL="${APP_URL}/api/pagos/pagofacil/callback"
-PAGO_FACIL_WEBHOOK_SECRET=     # php -r "echo bin2hex(random_bytes(24));"
+# Stripe: lo recomendado es cargar las claves desde Métodos de pago (estas son el respaldo)
+STRIPE_SECRET_KEY=             # sk_live_… en producción
+STRIPE_WEBHOOK_SECRET=         # whsec_… del endpoint registrado en Stripe
+STRIPE_CURRENCY=bob
 ```
 
 3. `php artisan key:generate`
@@ -87,9 +89,10 @@ Subir el **contenido** de `frontend/dist/` a `proyecto2/`.
 | Los cambios del `.env` no se aplican | Configuración en caché | `php artisan config:clear` |
 | El QR del certificado abre una dirección equivocada | `FRONTEND_URL` / `FRONTEND_ROUTER` | Deben coincidir con la URL pública y con `VITE_ROUTER` |
 
-## PagoFácil en producción
+## Stripe en producción
 
-1. Ingresar como Coordinador Financiero → *Métodos de pago* → editar **QR PagoFácil**.
-2. Modo **Real**, cargar `tcTokenService` y `tcTokenSecret`.
-3. La URL de callback debe ser alcanzable desde internet (la del `.env`). El secreto del webhook se añade solo.
-4. Hacer un pago de prueba de monto mínimo y confirmar que la cuota pasa a *Pagada* sin intervención.
+1. En el panel de Stripe, active la cuenta para cobros reales y copie la **Secret key** `sk_live_…`.
+2. *Developers › Webhooks › Add endpoint*: `https://www.tecnoweb.org.bo/inf513/grupoXXsa/proyecto2/backend/public/api/pagos/stripe/webhook`, evento `checkout.session.completed`; copie su **Signing secret** `whsec_…`.
+3. Ingresar como Coordinador Financiero → *Métodos de pago* → editar **Tarjeta de crédito o débito (Stripe)** → pegar ambas claves (la tabla mostrará «Modo real»).
+4. Hacer un pago de monto mínimo y confirmar que la cuota pasa a *Pagada* sin intervención.
+5. `FRONTEND_URL` debe ser la dirección pública: Stripe devuelve al estudiante a `…/pago/resultado`.

@@ -15,7 +15,7 @@
 | 7 | Contador de visitas por página en el pie | Tablas `visita` y `contador_visita` + trigger. `useVisitas`, pie de `LayoutSitio` |
 | 8 | Panel con gráficos del negocio y de accesos | `PanelService` · páginas *Panel* y *Estadísticas de acceso* |
 | 9 | Búsqueda global en el encabezado | `Buscador.jsx` (predictiva) · `BusquedaController` |
-| 10 | Métodos de pago, pagos únicos y planes de pago | *Métodos de pago*, *Aranceles*, *Mis pagos*, *Pagos y conciliación* · `PagoService`, `PagoFacilService` |
+| 10 | Métodos de pago, pagos únicos y planes de pago | *Métodos de pago*, *Aranceles*, *Mis pagos*, *Pagos y conciliación* · `PagoService`, `StripeService` |
 
 ## Casos de uso
 
@@ -24,7 +24,7 @@
 | CU1 Usuarios | Registro, Ingresar, Perfil, Usuarios, Estudiantes, Roles y permisos | `UsuarioService`, `MenuService` |
 | CU2 Programas, mallas y ofertas | Programas, Módulos, Mallas (con *Nueva versión*), Ofertas, Catálogo público | `MallaService`, `OfertaService` |
 | CU3 Preinscripción y expediente | Catálogo → Preinscribirme, Mi expediente, Preinscripciones, Matrículas, Mis estudios | `MatriculaService`, `DocumentoService` |
-| CU4 Aranceles, becas y pagos | Aranceles, Becas, Métodos de pago, Mis pagos, Pagos y conciliación | `PagoService`, `PagoFacilService` |
+| CU4 Aranceles, becas y pagos | Aranceles, Becas, Métodos de pago, Mis pagos, Pagos y conciliación | `PagoService`, `StripeService` |
 | CU5 Asistencia y notas | Mis módulos → Planilla (calificaciones, asistencia, evaluaciones), Correcciones | `EvaluacionService` |
 | CU6 Certificados | Certificación (validar requisitos, emitir), Mis certificados, Verificar certificado (pública) | `CertificacionService` |
 | CU7 Repositorio | Repositorio documental | `DocumentoService` |

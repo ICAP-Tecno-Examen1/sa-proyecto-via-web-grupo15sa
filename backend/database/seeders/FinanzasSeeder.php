@@ -16,7 +16,7 @@ class FinanzasSeeder extends Seeder
     {
         MetodoPago::firstOrCreate(['nombre' => 'Efectivo'], [
             'tipo' => MetodoPago::EFECTIVO,
-            'descripcion' => 'Pago en ventanilla del ICAP. Lo registra el personal autorizado.',
+            'descripcion' => 'Pague en la caja del ICAP. Se avisa a Secretaría y la cuota queda pagada cuando cobran.',
             'activo' => true,
         ]);
 
@@ -26,36 +26,33 @@ class FinanzasSeeder extends Seeder
             'activo' => true,
         ]);
 
-        $qr = MetodoPago::firstOrCreate(['nombre' => 'QR PagoFácil'], [
+        // Pasarela en línea: Stripe Checkout (pago con tarjeta)
+        $tarjeta = MetodoPago::firstOrCreate(['nombre' => 'Tarjeta de crédito o débito (Stripe)'], [
             'tipo' => MetodoPago::PASARELA,
-            'descripcion' => 'Pago en línea con QR. Se confirma automáticamente.',
+            'descripcion' => 'Pago en línea con tarjeta en la página segura de Stripe. Se confirma automáticamente.',
             'activo' => true,
         ]);
 
-        // Credenciales desde el .env (PAGO_FACIL_TCTOKEN_*). Sin ellas queda guardado pero no activo;
-        // también se pueden cargar desde Finanzas > Métodos de pago.
-        $service = config('icap.pagofacil.tc_token_service');
-        $secret = config('icap.pagofacil.tc_token_secret');
-
-        $electronico = MetodoPagoElectronico::firstOrNew(['id_metodo_pago' => $qr->id_metodo_pago]);
+        // Las claves pueden venir del .env (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET) o cargarse
+        // desde Finanzas > Métodos de pago. Sin clave secreta el método no se ofrece al pagar.
+        $electronico = MetodoPagoElectronico::firstOrNew(['id_metodo_pago' => $tarjeta->id_metodo_pago]);
 
         if (! $electronico->exists) {
-            $electronico->tc_token_service = $service;
-            $electronico->tc_token_secret = $secret;
-            $electronico->callback_url = config('icap.pagofacil.callback_url');
-            $electronico->activo = filled($service) && filled($secret);
-            $electronico->id_metodo_pago = $qr->id_metodo_pago;
+            $electronico->id_metodo_pago = $tarjeta->id_metodo_pago;
+            // Habilitado; igual solo se ofrece al pagar cuando hay una clave de Stripe (aquí o en el .env).
+            $electronico->activo = true;
             $electronico->save();
         }
 
         foreach ([
-            ['Beca Excelencia Académica', 50, 'UAGRM', 'Para estudiantes con promedio sobresaliente.'],
-            ['Beca Socioeconómica', 30, 'ICAP', 'Apoyo a estudiantes de escasos recursos.'],
-            ['Descuento Funcionario UAGRM', 20, 'UAGRM', 'Descuento para funcionarios universitarios.'],
-            ['Beca Completa Convenio Municipal', 100, 'Gobierno Autónomo Municipal', 'Cobertura total por convenio interinstitucional.'],
-        ] as [$nombre, $porcentaje, $institucion, $descripcion]) {
+            // nombre, %, institución, descripción, requisitos (documento que debe adjuntar quien la solicita)
+            ['Beca Excelencia Académica', 50, 'UAGRM', 'Para estudiantes con promedio sobresaliente.', 'Certificado o kárdex de notas con promedio sobresaliente.'],
+            ['Beca Socioeconómica', 30, 'ICAP', 'Apoyo a estudiantes de escasos recursos.', 'Declaración o informe socioeconómico con respaldo de los ingresos del hogar.'],
+            ['Descuento Funcionario UAGRM', 20, 'UAGRM', 'Descuento para funcionarios universitarios.', 'Credencial o certificado de trabajo vigente de la UAGRM.'],
+            ['Beca Completa Convenio Municipal', 100, 'Gobierno Autónomo Municipal', 'Cobertura total por convenio interinstitucional.', 'Nota o carta del Gobierno Autónomo Municipal que respalde el convenio.'],
+        ] as [$nombre, $porcentaje, $institucion, $descripcion, $requisitos]) {
             Beca::firstOrCreate(['nombre' => $nombre], [
-                'porcentaje' => $porcentaje, 'institucion_financiadora' => $institucion, 'descripcion' => $descripcion,
+                'porcentaje' => $porcentaje, 'institucion_financiadora' => $institucion, 'descripcion' => $descripcion, 'requisitos' => $requisitos,
             ]);
         }
     }

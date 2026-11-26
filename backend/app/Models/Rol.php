@@ -10,10 +10,15 @@ class Rol extends Modelo
 
     // Roles de negocio del ICAP (los seis actores del sistema).
     public const DIRECTOR = 'Director';
+
     public const SECRETARIA = 'Secretaria';
+
     public const COORDINADOR_ACADEMICO = 'Coordinador Académico';
+
     public const COORDINADOR_FINANCIERO = 'Coordinador Financiero';
+
     public const DOCENTE = 'Docente';
+
     public const ESTUDIANTE = 'Estudiante';
 
     public const BASE = [
