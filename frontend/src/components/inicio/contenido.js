@@ -15,7 +15,7 @@ export const PORTADA = {
   resaltado: 'cambiará tu vida.',
   descripcion:
     'Cursos, talleres y carreras técnicas de la UAGRM. Inscríbete, paga y sigue tu avance desde un solo lugar.',
-  accionPrincipal: 'Empieza hoy',
+  accionPrincipal: 'Inscribete Ahora',
   accionSecundaria: 'Ver programas',
   garantias: [
     { Icono: Wallet, texto: 'Pago con tarjeta o en caja' },

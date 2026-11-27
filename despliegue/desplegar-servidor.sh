@@ -3,10 +3,10 @@
 # Despliegue en tecnoweb, ejecutado EN EL SERVIDOR (terminal de Cockpit).
 #
 #   Primera vez:   bash ~/.repo-proyecto2/despliegue/desplegar-servidor.sh
-#   Actualizar:    el mismo comando (hace git pull y vuelve a publicar)
+#   Actualizar:    el mismo comando (trae lo último de GitHub y vuelve a publicar)
 #
 # Qué hace:
-#   1. Trae la última versión del repositorio (~/.repo-proyecto2, NO público).
+#   1. Trae la última versión de GitHub (~/.repo-proyecto2, NO público).
 #   2. Compila el frontend (npm run build) con las rutas del grupo.
 #   3. Instala las dependencias PHP de producción (composer install --no-dev).
 #   4. Publica en ~/proyecto2 : frontend compilado + backend/ (sin tocar el .env
@@ -18,6 +18,9 @@
 # ----------------------------------------------------------------------
 set -euo pipefail
 
+# Todo va dentro de main(): bash lee la función completa ANTES de ejecutarla. Así no se
+# rompe cuando el paso 1 actualiza este mismo archivo desde GitHub mientras corre.
+main() {
 GRUPO="${GRUPO:-$(whoami)}"                   # grupo15sa
 REPO="$HOME/.repo-proyecto2"                  # copia del repositorio (oculta y privada)
 DESTINO="$HOME/proyecto2"                     # carpeta publicada
@@ -28,8 +31,12 @@ paso() { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }
 # El repositorio no debe verse desde la web: solo el dueño puede leerlo.
 chmod 700 "$REPO"
 
-paso "1/5 Actualizando el código (git pull)"
-git -C "$REPO" pull --ff-only
+paso "1/5 Actualizando el código (git)"
+# Es una copia solo para desplegar: se deja idéntica a GitHub aunque npm haya tocado
+# el package-lock.json (con «git pull» eso haría fallar la siguiente actualización).
+git -C "$REPO" fetch --quiet origin
+git -C "$REPO" reset --hard --quiet origin/main
+git -C "$REPO" log --oneline -1
 
 paso "2/5 Compilando el frontend para $BASE"
 cd "$REPO/frontend"
@@ -65,7 +72,14 @@ for c in app/private app/public logs fonts framework/cache/data framework/sessio
   mkdir -p "$DESTINO/backend/storage/$c"
 done
 rm -f "$DESTINO/backend/bootstrap/cache/"*.php
-chmod -R 777 "$DESTINO/backend/storage" "$DESTINO/backend/bootstrap/cache"
+
+# Permisos: el servidor web (usuario apache) debe poder escribir en storage/ y bootstrap/cache.
+# Con ACL se da acceso solo a apache; si no hay setfacl, se abre a todos (777).
+if command -v setfacl >/dev/null 2>&1 && setfacl -R -m u:apache:rwX,d:u:apache:rwX "$DESTINO/backend/storage" "$DESTINO/backend/bootstrap/cache" 2>/dev/null; then
+  echo "Permisos de escritura para apache (ACL)."
+else
+  chmod -R 777 "$DESTINO/backend/storage" "$DESTINO/backend/bootstrap/cache"
+fi
 
 if [ ! -f "$DESTINO/backend/.env" ]; then
   printf '\n\033[1;33mFalta %s/backend/.env\033[0m: créelo con los datos que dio el docente\n' "$DESTINO"
@@ -73,8 +87,20 @@ if [ ! -f "$DESTINO/backend/.env" ]; then
   exit 1
 fi
 
+# El .env tiene la contraseña de la base: que no lo lean otros usuarios del servidor
+# (la web ya lo bloquea con .htaccess). Solo el dueño y apache.
+if command -v setfacl >/dev/null 2>&1 && chmod 600 "$DESTINO/backend/.env" && setfacl -m u:apache:r "$DESTINO/backend/.env" 2>/dev/null; then
+  echo "backend/.env protegido (solo $GRUPO y apache)."
+else
+  chmod 644 "$DESTINO/backend/.env"
+fi
+
 paso "5/5 Base de datos y cachés"
 cd "$DESTINO/backend"
+# Primera vez: si el .env no tiene APP_KEY, se genera
+if ! grep -qE '^APP_KEY=base64:.+' .env; then
+  php artisan key:generate --force
+fi
 php artisan package:discover
 php artisan migrate --force          # solo agrega lo que falta; NUNCA migrate:fresh aquí
 php artisan config:cache
@@ -82,3 +108,7 @@ php artisan route:cache
 
 printf '\n\033[1;32mListo:\033[0m https://www.tecnoweb.org.bo%s\n' "$BASE"
 echo "Prueba de la API: https://www.tecnoweb.org.bo${BASE}backend/public/api/publico/catalogo"
+}
+
+main "$@"
+exit $?
